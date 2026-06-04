@@ -9,867 +9,861 @@
 <meta name="theme-color" content="#ffffff">
 <title>施工体系図アプリ</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <style>
-  :root {
-    --blue: #1A6BBF;
-    --blue-light: #E8F2FB;
-    --blue-dark: #0D4A8A;
-    --green: #2E7D32;
-    --green-light: #E8F5E9;
-    --red: #D32F2F;
-    --red-light: #FFEBEE;
-    --amber: #E65100;
-    --amber-light: #FFF3E0;
-    --gray-bg: #F4F4F2;
-    --gray-card: #FFFFFF;
-    --gray-border: rgba(0,0,0,0.09);
-    --gray-border-md: rgba(0,0,0,0.17);
-    --text-main: #1C1C1E;
-    --text-sub: #636366;
-    --text-hint: #AEAEB2;
-    --radius-sm: 10px;
-    --radius-md: 14px;
-    --radius-lg: 18px;
-    --safe-bottom: env(safe-area-inset-bottom, 0px);
-    --safe-top: env(safe-area-inset-top, 44px);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; overflow: hidden; }
-  body { font-family: -apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif; background: var(--gray-bg); color: var(--text-main); }
-
-  #app { display: flex; flex-direction: column; height: 100%; }
-  .screen { display: none; flex: 1; flex-direction: column; overflow: hidden; }
-  .screen.active { display: flex; }
-  .scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px 14px 80px; }
-
-  /* Top bar */
-  .topbar { background: #fff; padding: calc(var(--safe-top) + 10px) 16px 14px; border-bottom: 0.5px solid var(--gray-border); display: flex; align-items: flex-end; justify-content: space-between; }
-  .topbar-title { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
-  .topbar-sub { font-size: 12px; color: var(--text-sub); margin-top: 2px; }
-  .topbar-btn { background: var(--blue-light); border: none; color: var(--blue); border-radius: var(--radius-sm); padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; }
-
-  /* Back bar */
-  .back-bar { background: #fff; padding: calc(var(--safe-top) + 10px) 16px 14px; border-bottom: 0.5px solid var(--gray-border); display: flex; align-items: flex-end; gap: 8px; }
-  .back-btn { background: none; border: none; color: var(--blue); font-size: 15px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 3px; padding: 0; flex-shrink: 0; }
-  .back-title { font-size: 17px; font-weight: 700; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-  /* Bottom nav */
-  .bottom-nav { background: #fff; border-top: 0.5px solid var(--gray-border); display: flex; padding-bottom: calc(var(--safe-bottom) + 16px); position: relative; z-index: 100; flex-shrink: 0; }
-  .nav-btn { flex: 1; background: none; border: none; padding: 10px 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; color: var(--text-hint); cursor: pointer; min-height: 56px; }
-  .nav-btn i { font-size: 23px; }
-  .nav-btn.active { color: var(--blue); }
-
-  /* Cards */
-  .card { background: #fff; border-radius: var(--radius-md); border: 0.5px solid var(--gray-border); padding: 14px 16px; margin-bottom: 10px; }
-  .card-title { font-size: 12px; font-weight: 600; color: var(--text-sub); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; letter-spacing: 0.2px; }
-  .card-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 7px 0; border-bottom: 0.5px solid rgba(0,0,0,0.055); }
-  .card-row:last-child { border-bottom: none; padding-bottom: 0; }
-  .card-label { font-size: 12px; color: var(--text-sub); flex-shrink: 0; margin-right: 10px; white-space: nowrap; }
-  .card-value { font-size: 13px; font-weight: 500; text-align: right; }
-
-  /* Site list */
-  .site-item { background: #fff; border-radius: var(--radius-md); border: 0.5px solid var(--gray-border); padding: 13px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
-  .site-item:active { opacity: 0.7; }
-  .site-icon { width: 44px; height: 44px; border-radius: var(--radius-sm); background: var(--blue-light); display: flex; align-items: center; justify-content: center; color: var(--blue); font-size: 22px; flex-shrink: 0; }
-  .site-info { flex: 1; min-width: 0; }
-  .site-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .site-meta { font-size: 11px; color: var(--text-sub); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .site-right { text-align: right; flex-shrink: 0; }
-  .site-date { font-size: 11px; color: var(--text-hint); }
-  .section-label { font-size: 11px; font-weight: 600; color: var(--text-sub); letter-spacing: 0.5px; margin: 4px 2px 8px; text-transform: uppercase; }
-
-  /* Search */
-  .search-box { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.06); border-radius: var(--radius-sm); padding: 9px 12px; margin-bottom: 14px; }
-  .search-box i { font-size: 16px; color: var(--text-hint); }
-  .search-box input { background: none; border: none; outline: none; font-size: 14px; flex: 1; color: var(--text-main); }
-
-  /* Badges */
-  .badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; }
-  .badge-1 { background: var(--blue-light); color: var(--blue-dark); }
-  .badge-2 { background: var(--green-light); color: var(--green); }
-
-  /* Contractor table */
-  .ctable { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .ctable th { font-size: 11px; color: var(--text-sub); font-weight: 600; padding: 4px 6px 8px; text-align: left; border-bottom: 0.5px solid var(--gray-border-md); }
-  .ctable td { padding: 8px 6px; border-bottom: 0.5px solid rgba(0,0,0,0.055); vertical-align: top; }
-  .ctable tr:last-child td { border-bottom: none; }
-
-  /* Copy */
-  .check-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 0.5px solid rgba(0,0,0,0.055); }
-  .check-item:last-child { border-bottom: none; }
-  .check-item input[type=checkbox] { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--blue); cursor: pointer; }
-  .check-label { flex: 1; cursor: pointer; }
-  .check-company { font-size: 13px; font-weight: 600; }
-  .check-detail { font-size: 11px; color: var(--text-sub); margin-top: 2px; }
-  .copy-preview { background: rgba(0,0,0,0.04); border-radius: var(--radius-sm); padding: 13px 14px; font-size: 12px; line-height: 2; color: var(--text-sub); font-family: 'Courier New',monospace; white-space: pre-wrap; margin: 12px 0; min-height: 64px; }
-
-  /* Buttons */
-  .btn-primary { width: 100%; background: var(--blue); color: #fff; border: none; border-radius: var(--radius-sm); padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
-  .btn-primary:active { background: var(--blue-dark); }
-  .btn-primary.success { background: var(--green); }
-  .btn-outline { width: 100%; background: none; border: 0.5px solid var(--gray-border-md); border-radius: var(--radius-sm); padding: 12px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--text-main); margin-top: 8px; }
-  .btn-danger { color: var(--red); }
-
-  /* Camera screen */
-  .cam-hero { text-align: center; padding: 28px 20px 24px; }
-  .cam-icon { width: 80px; height: 80px; border-radius: 50%; background: var(--blue-light); display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; color: var(--blue); font-size: 36px; }
-  .cam-title { font-size: 19px; font-weight: 700; margin-bottom: 8px; }
-  .cam-sub { font-size: 13px; color: var(--text-sub); line-height: 1.8; margin-bottom: 24px; }
-  #file-input { display: none; }
-  #img-preview-wrap { margin: 0 0 10px; display: none; }
-  #img-preview { width: 100%; max-height: 240px; object-fit: cover; border-radius: var(--radius-md); border: 0.5px solid var(--gray-border); }
-
-  /* Analyzing */
-  .analyzing-wrap { text-align: center; padding: 36px 20px; }
-  .spinner { width: 48px; height: 48px; border: 3px solid var(--blue-light); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.75s linear infinite; margin: 0 auto 18px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .analyzing-label { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
-  .analyzing-step { font-size: 13px; color: var(--text-sub); }
-  .progress-bar { height: 4px; background: rgba(0,0,0,0.08); border-radius: 2px; margin: 16px 0 0; overflow: hidden; }
-  .progress-fill { height: 100%; background: var(--blue); border-radius: 2px; width: 0; transition: width 0.6s ease; }
-
-  /* Map */
-  .map-mock { width: 100%; height: 180px; background: #dce9f5; position: relative; overflow: hidden; border-radius: var(--radius-md) var(--radius-md) 0 0; }
-  .map-pin-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-100%); font-size: 36px; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2)); }
-  .map-info-block { padding: 12px 16px; }
-  .map-address { font-size: 14px; font-weight: 600; }
-  .map-sub-text { font-size: 12px; color: var(--text-sub); margin-top: 2px; }
-  .btn-maps { margin-top: 10px; width: 100%; background: none; border: 0.5px solid var(--gray-border-md); border-radius: var(--radius-sm); padding: 10px; font-size: 13px; cursor: pointer; color: var(--blue); display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; }
-
-  /* Settings */
-  .setting-input { width: 100%; border: 0.5px solid var(--gray-border-md); border-radius: var(--radius-sm); padding: 11px 12px; font-size: 13px; font-family: 'Courier New',monospace; letter-spacing: 0.5px; outline: none; color: var(--text-main); background: #fff; margin-top: 8px; }
-  .setting-input:focus { border-color: var(--blue); }
-
-  /* Info banners */
-  .banner { border-radius: var(--radius-sm); padding: 13px 14px; margin-bottom: 12px; display: flex; gap: 10px; align-items: flex-start; }
-  .banner i { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
-  .banner b { display: block; font-size: 13px; font-weight: 700; margin-bottom: 3px; }
-  .banner span { font-size: 12px; line-height: 1.6; }
-  .banner-warn { background: var(--amber-light); border: 0.5px solid rgba(230,81,0,0.25); }
-  .banner-warn i { color: var(--amber); }
-  .banner-ok { background: var(--green-light); border: 0.5px solid rgba(46,125,50,0.25); }
-  .banner-ok i { color: var(--green); }
-  .banner-info { background: var(--blue-light); border: 0.5px solid rgba(26,107,191,0.25); }
-  .banner-info i { color: var(--blue); }
-
-  /* Steps */
-  .steps { display: flex; flex-direction: column; gap: 0; }
-  .step { display: flex; gap: 12px; padding: 11px 0; border-bottom: 0.5px solid rgba(0,0,0,0.06); }
-  .step:last-child { border-bottom: none; }
-  .step-num { width: 26px; height: 26px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .step-text b { font-size: 13px; font-weight: 600; display: block; }
-  .step-text span { font-size: 12px; color: var(--text-sub); line-height: 1.6; }
-  .step-link { font-size: 12px; color: var(--blue); text-decoration: none; display: inline-flex; align-items: center; gap: 3px; margin-top: 3px; font-weight: 600; }
-
-  /* Resolution tip */
-  .tip-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 4px; }
-  .tip-box { border-radius: var(--radius-sm); padding: 10px 8px; text-align: center; }
-  .tip-box i { font-size: 22px; display: block; margin-bottom: 5px; }
-  .tip-box b { font-size: 11px; font-weight: 700; display: block; }
-  .tip-box span { font-size: 10px; color: var(--text-sub); display: block; margin-top: 2px; line-height: 1.4; }
-  .tip-ok { background: var(--green-light); }
-  .tip-ok i, .tip-ok b { color: var(--green); }
-  .tip-warn { background: var(--amber-light); }
-  .tip-warn i, .tip-warn b { color: var(--amber); }
-  .tip-ng { background: var(--red-light); }
-  .tip-ng i, .tip-ng b { color: var(--red); }
-
-  /* Toast */
-  #toast { position: fixed; bottom: calc(72px + var(--safe-bottom)); left: 50%; transform: translateX(-50%); background: #1C1C1E; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity 0.25s; pointer-events: none; white-space: nowrap; z-index: 999; display: flex; align-items: center; gap: 7px; }
-  #toast.show { opacity: 1; }
-
-  .empty-state { text-align: center; padding: 56px 20px; color: var(--text-hint); }
-  .empty-state i { font-size: 52px; display: block; margin-bottom: 14px; }
-  .empty-state p { font-size: 14px; line-height: 1.7; }
-  .empty-state button { margin-top: 20px; display: inline-flex; align-items: center; gap: 6px; background: var(--blue); color: #fff; border: none; border-radius: var(--radius-sm); padding: 12px 22px; font-size: 14px; font-weight: 600; cursor: pointer; }
+:root{--blue:#1A6BBF;--blue-light:#E8F2FB;--blue-dark:#0D4A8A;--green:#2E7D32;--green-light:#E8F5E9;--red:#D32F2F;--red-light:#FFEBEE;--amber:#E65100;--amber-light:#FFF3E0;--gray-bg:#F4F4F2;--gray-border:rgba(0,0,0,0.09);--gray-border-md:rgba(0,0,0,0.17);--text-main:#1C1C1E;--text-sub:#636366;--text-hint:#AEAEB2;--r-sm:10px;--r-md:14px;--safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,44px)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif;background:var(--gray-bg);color:var(--text-main)}
+#app{display:flex;flex-direction:column;height:100%}
+.screen{display:none;flex:1;flex-direction:column;overflow:hidden}
+.screen.active{display:flex}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px 80px}
+.topbar{background:#fff;padding:calc(var(--safe-t) + 10px) 16px 14px;border-bottom:0.5px solid var(--gray-border);display:flex;align-items:flex-end;justify-content:space-between}
+.topbar-title{font-size:22px;font-weight:700}
+.topbar-sub{font-size:12px;color:var(--text-sub);margin-top:2px}
+.topbar-btn{background:var(--blue-light);border:none;color:var(--blue);border-radius:var(--r-sm);padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px}
+.back-bar{background:#fff;padding:calc(var(--safe-t) + 10px) 16px 14px;border-bottom:0.5px solid var(--gray-border);display:flex;align-items:flex-end;gap:8px}
+.back-btn{background:none;border:none;color:var(--blue);font-size:15px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:3px;padding:0;flex-shrink:0}
+.back-title{font-size:17px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bottom-nav{background:#fff;border-top:0.5px solid var(--gray-border);display:flex;padding-bottom:calc(var(--safe-b) + 16px);position:relative;z-index:100;flex-shrink:0}
+.nav-btn{flex:1;background:none;border:none;padding:10px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:var(--text-hint);cursor:pointer;min-height:56px}
+.nav-btn i{font-size:23px}
+.nav-btn.active{color:var(--blue)}
+.card{background:#fff;border-radius:var(--r-md);border:0.5px solid var(--gray-border);padding:14px 16px;margin-bottom:10px}
+.card-title{font-size:12px;font-weight:600;color:var(--text-sub);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.card-row{display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:0.5px solid rgba(0,0,0,0.055)}
+.card-row:last-child{border-bottom:none;padding-bottom:0}
+.card-label{font-size:12px;color:var(--text-sub);flex-shrink:0;margin-right:10px;white-space:nowrap}
+.card-value{font-size:13px;font-weight:500;text-align:right}
+.site-item{background:#fff;border-radius:var(--r-md);border:0.5px solid var(--gray-border);padding:13px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;cursor:pointer}
+.site-item:active{opacity:0.7}
+.site-icon{width:44px;height:44px;border-radius:var(--r-sm);background:var(--blue-light);display:flex;align-items:center;justify-content:center;color:var(--blue);font-size:22px;flex-shrink:0}
+.site-info{flex:1;min-width:0}
+.site-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.site-meta{font-size:11px;color:var(--text-sub);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.site-right{text-align:right;flex-shrink:0}
+.site-date{font-size:11px;color:var(--text-hint)}
+.sec-label{font-size:11px;font-weight:600;color:var(--text-sub);letter-spacing:0.5px;margin:4px 2px 8px}
+.search-box{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.06);border-radius:var(--r-sm);padding:9px 12px;margin-bottom:14px}
+.search-box i{font-size:16px;color:var(--text-hint)}
+.search-box input{background:none;border:none;outline:none;font-size:14px;flex:1;color:var(--text-main)}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px}
+.badge-1{background:var(--blue-light);color:var(--blue-dark)}
+.badge-2{background:var(--green-light);color:var(--green)}
+.ctable{width:100%;border-collapse:collapse;font-size:12px}
+.ctable th{font-size:11px;color:var(--text-sub);font-weight:600;padding:4px 6px 8px;text-align:left;border-bottom:0.5px solid var(--gray-border-md)}
+.ctable td{padding:8px 6px;border-bottom:0.5px solid rgba(0,0,0,0.055);vertical-align:top}
+.ctable tr:last-child td{border-bottom:none}
+.check-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.055)}
+.check-item:last-child{border-bottom:none}
+.check-item input[type=checkbox]{width:20px;height:20px;flex-shrink:0;accent-color:var(--blue);cursor:pointer}
+.check-label{flex:1;cursor:pointer}
+.check-company{font-size:13px;font-weight:600}
+.check-detail{font-size:11px;color:var(--text-sub);margin-top:2px}
+.copy-preview{background:rgba(0,0,0,0.04);border-radius:var(--r-sm);padding:13px 14px;font-size:12px;line-height:2;color:var(--text-sub);font-family:'Courier New',monospace;white-space:pre-wrap;margin:12px 0;min-height:64px}
+.btn-primary{width:100%;background:var(--blue);color:#fff;border:none;border-radius:var(--r-sm);padding:14px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-primary:active{background:var(--blue-dark)}
+.btn-primary.success{background:var(--green)}
+.btn-outline{width:100%;background:none;border:0.5px solid var(--gray-border-md);border-radius:var(--r-sm);padding:12px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--text-main);margin-top:8px}
+.btn-danger{color:var(--red)}
+.banner{border-radius:var(--r-sm);padding:13px 14px;margin-bottom:12px;display:flex;gap:10px;align-items:flex-start}
+.banner i{font-size:20px;flex-shrink:0;margin-top:1px}
+.banner b{display:block;font-size:13px;font-weight:700;margin-bottom:3px}
+.banner span{font-size:12px;line-height:1.6}
+.banner-info{background:var(--blue-light);border:0.5px solid rgba(26,107,191,0.25)}
+.banner-info i{color:var(--blue)}
+.banner-ok{background:var(--green-light);border:0.5px solid rgba(46,125,50,0.25)}
+.banner-ok i{color:var(--green)}
+.banner-warn{background:var(--amber-light);border:0.5px solid rgba(230,81,0,0.25)}
+.banner-warn i{color:var(--amber)}
+.steps{display:flex;flex-direction:column}
+.step{display:flex;gap:12px;padding:11px 0;border-bottom:0.5px solid rgba(0,0,0,0.06)}
+.step:last-child{border-bottom:none}
+.step-num{width:26px;height:26px;border-radius:50%;background:var(--blue);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-text b{font-size:13px;font-weight:600;display:block}
+.step-text span{font-size:12px;color:var(--text-sub);line-height:1.6}
+.step-link{font-size:12px;color:var(--blue);text-decoration:none;display:inline-flex;align-items:center;gap:3px;margin-top:3px;font-weight:600}
+.map-mock{width:100%;height:180px;background:#dce9f5;position:relative;overflow:hidden;border-radius:var(--r-md) var(--r-md) 0 0}
+.map-pin{position:absolute;top:50%;left:50%;transform:translate(-50%,-100%);font-size:36px;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.2))}
+.map-info{padding:12px 16px}
+.map-addr{font-size:14px;font-weight:600}
+.map-sub{font-size:12px;color:var(--text-sub);margin-top:2px}
+.btn-maps{margin-top:10px;width:100%;background:none;border:0.5px solid var(--gray-border-md);border-radius:var(--r-sm);padding:10px;font-size:13px;cursor:pointer;color:var(--blue);display:flex;align-items:center;justify-content:center;gap:6px;font-weight:600}
+.setting-input{width:100%;border:0.5px solid var(--gray-border-md);border-radius:var(--r-sm);padding:11px 12px;font-size:13px;font-family:'Courier New',monospace;letter-spacing:0.5px;outline:none;color:var(--text-main);background:#fff;margin-top:8px}
+.setting-input:focus{border-color:var(--blue)}
+.spinner{width:44px;height:44px;border:3px solid var(--blue-light);border-top-color:var(--blue);border-radius:50%;animation:spin 0.75s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.progress-bar{height:4px;background:rgba(0,0,0,0.08);border-radius:2px;margin:16px 0 0;overflow:hidden}
+.progress-fill{height:100%;background:var(--blue);border-radius:2px;width:0;transition:width 0.6s ease}
+#toast{position:fixed;bottom:calc(80px + var(--safe-b));left:50%;transform:translateX(-50%);background:#1C1C1E;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;opacity:0;transition:opacity 0.25s;pointer-events:none;white-space:nowrap;z-index:999;display:flex;align-items:center;gap:7px}
+#toast.show{opacity:1}
+.empty-state{text-align:center;padding:56px 20px;color:var(--text-hint)}
+.empty-state i{font-size:52px;display:block;margin-bottom:14px}
+.empty-state p{font-size:14px;line-height:1.7}
+.empty-state button{margin-top:20px;display:inline-flex;align-items:center;gap:6px;background:var(--blue);color:#fff;border:none;border-radius:var(--r-sm);padding:12px 22px;font-size:14px;font-weight:600;cursor:pointer}
+#img-preview-wrap{margin:0 0 10px;display:none}
+#img-preview{width:100%;max-height:240px;object-fit:cover;border-radius:var(--r-md);border:0.5px solid var(--gray-border)}
+#pdf-preview-wrap{display:none;margin-bottom:10px}
+.tip-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:4px}
+.tip-box{border-radius:var(--r-sm);padding:10px 8px;text-align:center}
+.tip-box i{font-size:22px;display:block;margin-bottom:5px}
+.tip-box b{font-size:11px;font-weight:700;display:block}
+.tip-box span{font-size:10px;color:var(--text-sub);display:block;margin-top:2px;line-height:1.4}
+.tip-ok{background:var(--green-light)}.tip-ok i,.tip-ok b{color:var(--green)}
+.tip-warn{background:var(--amber-light)}.tip-warn i,.tip-warn b{color:var(--amber)}
+.tip-ng{background:var(--red-light)}.tip-ng i,.tip-ng b{color:var(--red)}
 </style>
 </head>
 <body>
 <div id="app">
 
-  <!-- LIST -->
-  <div class="screen active" id="screen-list">
-    <div class="topbar">
-      <div>
-        <div class="topbar-title">現場一覧</div>
-        <div class="topbar-sub" id="list-count">0件</div>
-      </div>
-      <button class="topbar-btn" onclick="goTo('camera')"><i class="ti ti-plus"></i>新規</button>
-    </div>
-    <div class="scroll">
-      <div class="search-box"><i class="ti ti-search"></i><input type="text" placeholder="現場名・業者名で検索" id="search-input" oninput="renderList()"></div>
-      <div class="section-label">登録済み現場</div>
-      <div id="site-list"></div>
-    </div>
+<div class="screen active" id="screen-list">
+  <div class="topbar">
+    <div><div class="topbar-title" id="list-title">現場一覧</div><div class="topbar-sub" id="list-count">0件</div></div>
+    <button class="topbar-btn" id="btn-new"><i class="ti ti-plus"></i>新規</button>
   </div>
-
-  <!-- DETAIL -->
-  <div class="screen" id="screen-detail">
-    <div class="back-bar">
-      <button class="back-btn" onclick="goBack()"><i class="ti ti-chevron-left"></i>戻る</button>
-      <div class="back-title" id="detail-title"></div>
-    </div>
-    <div class="scroll" id="detail-scroll"></div>
+  <div class="scroll">
+    <div class="search-box"><i class="ti ti-search"></i><input type="text" id="search-input" placeholder="現場名・業者名で検索"></div>
+    <div class="sec-label" id="list-label">登録済み現場</div>
+    <div id="site-list"></div>
   </div>
-
-  <!-- CAMERA -->
-  <div class="screen" id="screen-camera">
-    <div class="topbar">
-      <div><div class="topbar-title">撮影・解析</div><div class="topbar-sub">施工体系図をAIで自動読み取り</div></div>
-    </div>
-    <div class="scroll">
-      <!-- 方法①：撮影・画像・PDF -->
-      <div class="card">
-        <div class="card-title"><i class="ti ti-camera"></i> 方法① ファイルから解析</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-          <button class="btn-primary" style="font-size:13px;padding:12px 8px" onclick="document.getElementById('file-camera').click()">
-            <i class="ti ti-camera"></i><br>カメラで撮影
-          </button>
-          <button class="btn-outline" style="font-size:13px;padding:12px 8px;margin-top:0;border-color:var(--blue);color:var(--blue)" onclick="document.getElementById('file-gallery').click()">
-            <i class="ti ti-photo"></i><br>過去の写真を選ぶ
-          </button>
-        </div>
-        <button class="btn-outline" style="margin-top:0;border-color:var(--red);color:var(--red);font-size:13px;padding:11px" onclick="document.getElementById('file-pdf').click()">
-          <i class="ti ti-file-type-pdf"></i> PDFファイルを選ぶ
-        </button>
-        <input type="file" id="file-camera" accept="image/*" capture="environment" onchange="onFileSelected(event)" style="display:none">
-        <input type="file" id="file-gallery" accept="image/*" onchange="onFileSelected(event)" style="display:none">
-        <input type="file" id="file-pdf" accept="application/pdf" onchange="onPdfSelected(event)" style="display:none">
-        <div style="font-size:11px;color:var(--text-sub);text-align:center;margin-top:8px">JPG・PNG・HEIC・PDF対応</div>
-      </div>
-
-      <div id="img-preview-wrap"><img id="img-preview" src="" alt="プレビュー"></div>
-      <div id="pdf-preview-wrap" style="display:none" class="card" style="text-align:center">
-        <div style="display:flex;align-items:center;gap:12px;padding:4px 0">
-          <div style="width:44px;height:44px;background:var(--red-light);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <i class="ti ti-file-type-pdf" style="font-size:24px;color:var(--red)"></i>
-          </div>
-          <div style="flex:1;text-align:left">
-            <div style="font-size:14px;font-weight:600" id="pdf-filename">ファイル名.pdf</div>
-            <div style="font-size:12px;color:var(--text-sub)" id="pdf-filesize"></div>
-          </div>
-        </div>
-      </div>
-      <div id="analyze-btn-wrap" style="display:none">
-        <button class="btn-primary" onclick="startAnalysis()"><i class="ti ti-sparkles"></i> AIで解析する</button>
-        <button class="btn-outline" onclick="clearImage()"><i class="ti ti-x"></i> やり直す</button>
-      </div>
-      <div id="analyzing-wrap" style="display:none" class="card analyzing-wrap">
-        <div class="spinner"></div>
-        <div class="analyzing-label">AIが解析しています...</div>
-        <div class="analyzing-step" id="analyzing-step-text">施工体系図を読み取り中</div>
-        <div class="progress-bar"><div class="progress-fill" id="prog"></div></div>
-      </div>
-
-      <!-- 方法②：URL入力 -->
-      <div class="card" id="url-section">
-        <div class="card-title"><i class="ti ti-qrcode"></i> 方法② QRコード・URLから解析</div>
-        <div class="banner banner-info" style="margin-bottom:12px">
-          <i class="ti ti-info-circle"></i>
-          <div><b>QRコードで開いたページに対応</b><span>施工体系図のWebページURLを貼り付けるとAIが自動解析します。</span></div>
-        </div>
-        <div style="font-size:12px;color:var(--text-sub);margin-bottom:6px;font-weight:500">URLを貼り付けて解析ボタンを押す</div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input type="url" id="url-input" placeholder="https://..." style="flex:1;border:0.5px solid var(--gray-border-md);border-radius:var(--radius-sm);padding:10px 12px;font-size:14px;outline:none;color:var(--text-main);background:#fff">
-          <button class="btn-primary" style="width:auto;padding:10px 16px;flex-shrink:0;font-size:13px" onclick="startUrlAnalysis()"><i class="ti ti-world"></i> 解析</button>
-        </div>
-        <div id="url-analyzing-wrap" style="display:none;text-align:center;padding:20px 0">
-          <div class="spinner" style="width:36px;height:36px;margin:0 auto 12px"></div>
-          <div style="font-size:14px;font-weight:600">ページを取得中...</div>
-          <div style="font-size:12px;color:var(--text-sub);margin-top:4px" id="url-step-text">URLにアクセス中</div>
-          <div class="progress-bar" style="margin-top:12px"><div class="progress-fill" id="url-prog"></div></div>
-        </div>
-      </div>
-
-      <!-- 解像度ガイド -->
-      <div class="card">
-        <div class="card-title"><i class="ti ti-photo"></i> 撮影のコツ・解像度について</div>
-        <div class="banner banner-info" style="margin-bottom:10px">
-          <i class="ti ti-info-circle"></i>
-          <div><b>多少荒くても読み取れます</b><span>GeminiのAIは低解像度・多少ぼやけた画像でも文脈から文字を推測して補完します。ただし極端に暗い・ピンボケの場合は精度が下がります。</span></div>
-        </div>
-        <div class="tip-grid">
-          <div class="tip-box tip-ok"><i class="ti ti-check"></i><b>OK</b><span>明るい・正面から・文字が見える</span></div>
-          <div class="tip-box tip-warn"><i class="ti ti-alert-triangle"></i><b>△ やや注意</b><span>多少暗い・斜め・圧縮画像</span></div>
-          <div class="tip-box tip-ng"><i class="ti ti-x"></i><b>NG</b><span>極端なピンボケ・逆光・夜間</span></div>
-        </div>
-        <div style="font-size:12px;color:var(--text-sub);margin-top:10px;line-height:1.7">
-          ✅ 正面から看板全体が入るよう撮影<br>
-          ✅ フラッシュより自然光が◎<br>
-          ✅ 読み取れない場合は近づいて再撮影
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MAP -->
-  <div class="screen" id="screen-map">
-    <div class="topbar"><div><div class="topbar-title">現場マップ</div><div class="topbar-sub">撮影場所の一覧</div></div></div>
-    <div class="scroll" id="map-list"></div>
-  </div>
-
-  <!-- SETTINGS -->
-  <div class="screen" id="screen-settings">
-    <div class="topbar"><div><div class="topbar-title">設定</div><div class="topbar-sub">Gemini APIキー・アプリ情報</div></div></div>
-    <div class="scroll"><div id="settings-content"></div></div>
-  </div>
-
-  <nav class="bottom-nav">
-    <button class="nav-btn active" id="nav-list" onclick="goTo('list')"><i class="ti ti-list"></i>一覧</button>
-    <button class="nav-btn" id="nav-camera" onclick="goTo('camera')"><i class="ti ti-camera"></i>撮影</button>
-    <button class="nav-btn" id="nav-map" onclick="goTo('map')"><i class="ti ti-map-pin"></i>地図</button>
-    <button class="nav-btn" id="nav-settings" onclick="goTo('settings')"><i class="ti ti-settings"></i>設定</button>
-  </nav>
 </div>
 
-<div id="toast"><i class="ti ti-check"></i><span id="toast-msg">完了</span></div>
+<div class="screen" id="screen-detail">
+  <div class="back-bar">
+    <button class="back-btn" id="btn-back"><i class="ti ti-chevron-left"></i>戻る</button>
+    <div class="back-title" id="detail-title"></div>
+  </div>
+  <div class="scroll" id="detail-scroll"></div>
+</div>
+
+<div class="screen" id="screen-camera">
+  <div class="topbar"><div><div class="topbar-title">撮影・解析</div><div class="topbar-sub">施工体系図をAIで自動読み取り</div></div></div>
+  <div class="scroll">
+    <div class="card">
+      <div class="card-title"><i class="ti ti-camera"></i> 方法① ファイルから解析</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <button class="btn-primary" style="font-size:13px;padding:12px 8px" id="btn-camera"><i class="ti ti-camera"></i><br>カメラで撮影</button>
+        <button class="btn-outline" style="font-size:13px;padding:12px 8px;margin-top:0;border-color:var(--blue);color:var(--blue)" id="btn-gallery"><i class="ti ti-photo"></i><br>過去の写真を選ぶ</button>
+      </div>
+      <button class="btn-outline" style="margin-top:0;border-color:var(--red);color:var(--red);font-size:13px;padding:11px" id="btn-pdf"><i class="ti ti-file-type-pdf"></i> PDFファイルを選ぶ</button>
+      <input type="file" id="file-camera" accept="image/*" capture="environment" style="display:none">
+      <input type="file" id="file-gallery" accept="image/*" style="display:none">
+      <input type="file" id="file-pdf" accept="application/pdf" style="display:none">
+      <div style="font-size:11px;color:var(--text-sub);text-align:center;margin-top:8px">JPG・PNG・HEIC・PDF対応</div>
+    </div>
+    <div id="img-preview-wrap"><img id="img-preview" src="" alt=""></div>
+    <div id="pdf-preview-wrap" class="card">
+      <div style="display:flex;align-items:center;gap:12px;padding:4px 0">
+        <div style="width:44px;height:44px;background:var(--red-light);border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-file-type-pdf" style="font-size:24px;color:var(--red)"></i></div>
+        <div style="flex:1"><div style="font-size:14px;font-weight:600" id="pdf-name">ファイル名</div><div style="font-size:12px;color:var(--text-sub)" id="pdf-size"></div></div>
+      </div>
+    </div>
+    <div id="analyze-wrap" style="display:none">
+      <button class="btn-primary" id="btn-analyze"><i class="ti ti-sparkles"></i> AIで解析する</button>
+      <button class="btn-outline" id="btn-clear"><i class="ti ti-x"></i> やり直す</button>
+    </div>
+    <div id="analyzing-card" style="display:none" class="card" style="text-align:center;padding:36px 20px">
+      <div style="text-align:center;padding:20px 0">
+        <div class="spinner"></div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:6px">AIが解析しています...</div>
+        <div style="font-size:13px;color:var(--text-sub)" id="analyzing-step">読み取り中</div>
+        <div class="progress-bar"><div class="progress-fill" id="prog"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-qrcode"></i> 方法② QRコード・URLから解析</div>
+      <div class="banner banner-info" style="margin-bottom:12px"><i class="ti ti-info-circle"></i><div><b>QRコードで開いたページに対応</b><span>施工体系図のWebページURLを貼り付けるとAIが自動解析します。</span></div></div>
+      <div style="font-size:12px;color:var(--text-sub);margin-bottom:6px;font-weight:500">URLを貼り付けて解析ボタンを押す</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="url" id="url-input" placeholder="https://..." style="flex:1;border:0.5px solid var(--gray-border-md);border-radius:var(--r-sm);padding:10px 12px;font-size:14px;outline:none;color:var(--text-main);background:#fff">
+        <button class="btn-primary" id="btn-url" style="width:auto;padding:10px 16px;flex-shrink:0;font-size:13px"><i class="ti ti-world"></i> 解析</button>
+      </div>
+      <div id="url-analyzing" style="display:none;text-align:center;padding:20px 0">
+        <div class="spinner" style="width:36px;height:36px;margin:0 auto 12px"></div>
+        <div style="font-size:14px;font-weight:600">ページを取得中...</div>
+        <div style="font-size:12px;color:var(--text-sub);margin-top:4px" id="url-step">URLにアクセス中</div>
+        <div class="progress-bar" style="margin-top:12px"><div class="progress-fill" id="url-prog"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-photo"></i> 撮影のコツ</div>
+      <div class="banner banner-info" style="margin-bottom:10px"><i class="ti ti-info-circle"></i><div><b>多少荒くても読み取れます</b><span>AIは低解像度・多少ぼやけた画像でも文脈から補完します。</span></div></div>
+      <div class="tip-grid">
+        <div class="tip-box tip-ok"><i class="ti ti-check"></i><b>OK</b><span>明るい・正面から</span></div>
+        <div class="tip-box tip-warn"><i class="ti ti-alert-triangle"></i><b>△ 注意</b><span>多少暗い・斜め</span></div>
+        <div class="tip-box tip-ng"><i class="ti ti-x"></i><b>NG</b><span>ピンボケ・逆光</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="screen-map">
+  <div class="topbar"><div><div class="topbar-title">現場マップ</div><div class="topbar-sub">撮影場所の一覧</div></div></div>
+  <div class="scroll" id="map-list"></div>
+</div>
+
+<div class="screen" id="screen-settings">
+  <div class="topbar"><div><div class="topbar-title">設定</div><div class="topbar-sub">Gemini APIキー</div></div></div>
+  <div class="scroll" id="settings-content"></div>
+</div>
+
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="nav-list"><i class="ti ti-list"></i>一覧</button>
+  <button class="nav-btn" id="nav-camera"><i class="ti ti-camera"></i>撮影</button>
+  <button class="nav-btn" id="nav-map"><i class="ti ti-map-pin"></i>地図</button>
+  <button class="nav-btn" id="nav-settings"><i class="ti ti-settings"></i>設定</button>
+</nav>
+</div>
+
+<div id="toast"><i class="ti ti-check" id="toast-icon"></i><span id="toast-msg"></span></div>
 
 <script>
-let sites = JSON.parse(localStorage.getItem('sites_v2') || '[]');
-let currentSiteId = null;
-let selectedFile = null;
-let selectedImageBase64 = null;
-let selectedMime = 'image/jpeg';
-let currentLocation = null;
+(function(){
+"use strict";
 
-// ── Nav ──
-function goTo(screen) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('screen-' + screen).classList.add('active');
-  document.getElementById('nav-' + screen)?.classList.add('active');
-  if (screen === 'list') renderList();
-  if (screen === 'map') renderMap();
-  if (screen === 'settings') renderSettings();
+// ---- STATE ----
+var sites = [];
+var currentSiteId = null;
+var selectedFile = null;
+var selectedB64 = null;
+var selectedMime = 'image/jpeg';
+var currentLoc = null;
+var pdfText = null;
+
+try { sites = JSON.parse(localStorage.getItem('sites_v2') || '[]'); } catch(e){}
+
+function save(){ try{ localStorage.setItem('sites_v2', JSON.stringify(sites)); }catch(e){} }
+
+// ---- TOAST ----
+function toast(msg, isErr){
+  var t = document.getElementById('toast');
+  var i = document.getElementById('toast-icon');
+  document.getElementById('toast-msg').textContent = msg;
+  i.className = isErr ? 'ti ti-alert-circle' : 'ti ti-check';
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2300);
 }
-function goBack() { currentSiteId = null; goTo('list'); }
-function goToDetail(id) {
+
+// ---- NAVIGATION ----
+function goTo(screen){
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('active'); });
+  var s = document.getElementById('screen-' + screen);
+  var n = document.getElementById('nav-' + screen);
+  if(s) s.classList.add('active');
+  if(n) n.classList.add('active');
+  if(screen === 'list') renderList();
+  if(screen === 'map') renderMap();
+  if(screen === 'settings') renderSettings();
+}
+
+function goToDetail(id){
   currentSiteId = id;
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
   document.getElementById('screen-detail').classList.add('active');
   renderDetail();
 }
-function save() { localStorage.setItem('sites_v2', JSON.stringify(sites)); }
-function toast(msg, icon = 'ti-check') {
-  const t = document.getElementById('toast');
-  document.getElementById('toast-msg').textContent = msg;
-  t.querySelector('i').className = 'ti ' + icon;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2300);
-}
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function openLink(url) { window.open(url,'_blank'); }
 
-// ── List ──
-function renderList() {
-  const q = (document.getElementById('search-input')?.value||'').toLowerCase();
-  const filtered = q ? sites.filter(s =>
-    [s.name,s.client,...(s.primary||[]).flatMap(c=>[c.company,c.person]),...(s.secondary||[]).flatMap(c=>[c.company,c.person])].some(v=>v?.toLowerCase().includes(q))
-  ) : sites;
-  document.getElementById('list-count').textContent = `${sites.length}件のデータ`;
-  const el = document.getElementById('site-list');
-  if (filtered.length === 0) {
-    el.innerHTML = `<div class="empty-state"><i class="ti ti-building-off"></i><p>${q?'検索結果がありません':'まだ現場が登録されていません\n撮影ボタンから追加してください'}</p>${!q?`<button onclick="goTo('camera')"><i class="ti ti-camera"></i>撮影・解析する</button>`:''}</div>`;
+document.getElementById('btn-back').addEventListener('click', function(){ currentSiteId = null; goTo('list'); });
+document.getElementById('nav-list').addEventListener('click', function(){ goTo('list'); });
+document.getElementById('nav-camera').addEventListener('click', function(){ goTo('camera'); });
+document.getElementById('nav-map').addEventListener('click', function(){ goTo('map'); });
+document.getElementById('nav-settings').addEventListener('click', function(){ goTo('settings'); });
+document.getElementById('btn-new').addEventListener('click', function(){ goTo('camera'); });
+document.getElementById('search-input').addEventListener('input', renderList);
+
+// ---- HELPERS ----
+function esc(s){
+  var d = document.createElement('div');
+  d.textContent = String(s || '');
+  return d.innerHTML;
+}
+
+function today(){
+  var d = new Date();
+  return d.getFullYear() + '/' + (d.getMonth()+1) + '/' + d.getDate();
+}
+
+function openLink(url){ window.open(url, '_blank'); }
+
+// ---- LIST ----
+function renderList(){
+  var q = (document.getElementById('search-input').value || '').toLowerCase();
+  var filtered = q ? sites.filter(function(s){
+    var fields = [s.name, s.client];
+    (s.primary||[]).forEach(function(c){ fields.push(c.company, c.person); });
+    (s.secondary||[]).forEach(function(c){ fields.push(c.company, c.person); });
+    return fields.some(function(v){ return v && v.toLowerCase().indexOf(q) >= 0; });
+  }) : sites;
+
+  document.getElementById('list-count').textContent = sites.length + '\u4ef6\u306e\u30c7\u30fc\u30bf';
+  var el = document.getElementById('site-list');
+
+  if(filtered.length === 0){
+    el.innerHTML = '<div class="empty-state"><i class="ti ti-building-off"></i><p>' +
+      (q ? '\u691c\u7d22\u7d50\u679c\u304c\u3042\u308a\u307e\u305b\u3093' : '\u307e\u3060\u73fe\u5834\u304c\u767b\u9332\u3055\u308c\u3066\u3044\u307e\u305b\u3093') +
+      '</p></div>';
     return;
   }
-  el.innerHTML = filtered.slice().reverse().map(s => `
-    <div class="site-item" onclick="goToDetail('${s.id}')">
-      <div class="site-icon"><i class="ti ti-building-skyscraper"></i></div>
-      <div class="site-info">
-        <div class="site-name">${esc(s.name||'（現場名不明）')}</div>
-        <div class="site-meta"><i class="ti ti-map-pin" style="font-size:10px"></i> ${esc(s.address||s.client||'—')}</div>
-      </div>
-      <div class="site-right">
-        <div class="site-date">${esc(s.date||'')}</div>
-        <i class="ti ti-chevron-right" style="color:#ccc;font-size:16px;margin-top:4px;display:block"></i>
-      </div>
-    </div>`).join('');
+
+  var html = '';
+  var rev = filtered.slice().reverse();
+  for(var i=0;i<rev.length;i++){
+    var s = rev[i];
+    html += '<div class="site-item" data-id="' + esc(s.id) + '">' +
+      '<div class="site-icon"><i class="ti ti-building-skyscraper"></i></div>' +
+      '<div class="site-info"><div class="site-name">' + esc(s.name || '\uff08\u73fe\u5834\u540d\u4e0d\u660e\uff09') + '</div>' +
+      '<div class="site-meta">' + esc(s.address || s.client || '') + '</div></div>' +
+      '<div class="site-right"><div class="site-date">' + esc(s.date||'') + '</div>' +
+      '<i class="ti ti-chevron-right" style="color:#ccc;font-size:16px;margin-top:4px;display:block"></i></div></div>';
+  }
+  el.innerHTML = html;
+
+  el.querySelectorAll('.site-item').forEach(function(item){
+    item.addEventListener('click', function(){ goToDetail(this.getAttribute('data-id')); });
+  });
 }
 
-// ── Detail ──
-function renderDetail() {
-  const s = sites.find(x => x.id === currentSiteId);
-  if (!s) return;
-  document.getElementById('detail-title').textContent = s.name || '詳細';
-  const allC = [
-    ...(s.primary||[]).map((c,i)=>({...c,tier:1,key:`p${i}`})),
-    ...(s.secondary||[]).map((c,i)=>({...c,tier:2,key:`s${i}`}))
-  ];
-  const mapLink = s.lat && s.lng
-    ? `https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address||'')}`;
+// ---- DETAIL ----
+function renderDetail(){
+  var s = sites.find(function(x){ return x.id === currentSiteId; });
+  if(!s) return;
+  document.getElementById('detail-title').textContent = s.name || '\u8a73\u7d30';
 
-  document.getElementById('detail-scroll').innerHTML = `
-    <div class="card">
-      <div class="card-title"><i class="ti ti-file-description"></i> 基本情報</div>
-      <div class="card-row"><span class="card-label">現場名</span><span class="card-value">${esc(s.name||'—')}</span></div>
-      <div class="card-row"><span class="card-label">元請名</span><span class="card-value">${esc(s.client||'—')}</span></div>
-      <div class="card-row"><span class="card-label">工期</span><span class="card-value">${esc(s.period||'—')}</span></div>
-      <div class="card-row"><span class="card-label">撮影日</span><span class="card-value">${esc(s.date||'—')}</span></div>
-      <div class="card-row"><span class="card-label">住所</span><span class="card-value" style="font-size:12px">${esc(s.address||'—')}</span></div>
-    </div>
+  var allC = [];
+  (s.primary||[]).forEach(function(c,i){ allC.push({c:c, tier:1, key:'p'+i}); });
+  (s.secondary||[]).forEach(function(c,i){ allC.push({c:c, tier:2, key:'s'+i}); });
 
-    <div class="card">
-      <div class="card-title"><i class="ti ti-users"></i> 施工体系（業者一覧）</div>
-      ${allC.length===0 ? '<p style="font-size:13px;color:var(--text-hint);text-align:center;padding:10px">業者情報なし</p>' : `
-      <table class="ctable">
-        <thead><tr><th>区分</th><th>工種</th><th>業者名</th><th>担当者</th></tr></thead>
-        <tbody>${allC.map(c=>`
-          <tr>
-            <td><span class="badge badge-${c.tier}">${c.tier}次</span></td>
-            <td>${esc(c.trade||'—')}</td>
-            <td style="font-size:11px">${esc(c.company||'—')}</td>
-            <td style="font-size:11px">${esc(c.person||'—')}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>`}
-    </div>
+  var mapLink = (s.lat && s.lng)
+    ? 'https://www.google.com/maps/search/?api=1&query=' + s.lat + ',' + s.lng
+    : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(s.address||'');
 
-    <div class="card" style="padding:0;overflow:hidden">
-      <div class="map-mock">
-        <svg width="100%" height="100%" viewBox="0 0 390 180" xmlns="http://www.w3.org/2000/svg">
-          <rect width="390" height="180" fill="#dce9f5"/>
-          ${[...Array(8)].map((_,i)=>`<line x1="${i*56}" y1="0" x2="${i*56}" y2="180" stroke="#c5d8ed" stroke-width="1"/>`).join('')}
-          ${[...Array(5)].map((_,i)=>`<line x1="0" y1="${i*45}" x2="390" y2="${i*45}" stroke="#c5d8ed" stroke-width="1"/>`).join('')}
-          <rect x="40" y="50" width="80" height="40" rx="3" fill="#b8ccdf"/>
-          <rect x="160" y="35" width="60" height="55" rx="3" fill="#b8ccdf"/>
-          <rect x="250" y="65" width="90" height="30" rx="3" fill="#b8ccdf"/>
-          <rect x="100" y="115" width="120" height="30" rx="3" fill="#b8ccdf"/>
-          <line x1="0" y1="95" x2="390" y2="95" stroke="#a0b8cc" stroke-width="3"/>
-          <line x1="155" y1="0" x2="155" y2="180" stroke="#a0b8cc" stroke-width="2"/>
-        </svg>
-        <div class="map-pin-icon">📍</div>
-      </div>
-      <div class="map-info-block">
-        <div class="map-address">${esc(s.address||'住所不明')}</div>
-        <div class="map-sub-text">撮影日時: ${esc(s.date||'—')}</div>
-        <button class="btn-maps" onclick="openLink('${mapLink}')"><i class="ti ti-external-link"></i> Googleマップで開く</button>
-      </div>
-    </div>
+  var trows = '';
+  for(var i=0;i<allC.length;i++){
+    var cc = allC[i];
+    trows += '<tr><td><span class="badge badge-' + cc.tier + '">' + cc.tier + '\u6b21</span></td>' +
+      '<td>' + esc(cc.c.trade||'') + '</td>' +
+      '<td style="font-size:11px">' + esc(cc.c.company||'') + '</td>' +
+      '<td style="font-size:11px">' + esc(cc.c.person||'') + '</td></tr>';
+  }
 
-    <div class="card">
-      <div class="card-title"><i class="ti ti-copy"></i> 業者情報コピー（①②③形式）</div>
-      ${allC.length===0 ? '<p style="font-size:13px;color:var(--text-hint);text-align:center;padding:8px">業者情報がありません</p>' : `
-        <div>${allC.map(c=>`
-          <div class="check-item">
-            <input type="checkbox" id="chk_${c.key}" onchange="updatePreview()">
-            <label for="chk_${c.key}" class="check-label">
-              <div class="check-company"><span class="badge badge-${c.tier}" style="margin-right:5px">${c.tier}次</span>${esc(c.trade||'')} — ${esc(c.company||'')}</div>
-              <div class="check-detail">${esc(c.person||'')} ／ ${esc(c.address||c.company||'')}</div>
-            </label>
-          </div>`).join('')}
-        </div>
-        <div class="copy-preview" id="copy-preview-text">業者を選択するとここに表示されます</div>
-        <button class="btn-primary" id="exec-copy-btn" onclick="execCopy()"><i class="ti ti-copy"></i> クリップボードにコピー</button>`}
-      <button class="btn-outline btn-danger" onclick="deleteSite('${s.id}')"><i class="ti ti-trash"></i> この現場を削除</button>
-    </div>`;
+  var checkItems = '';
+  for(var j=0;j<allC.length;j++){
+    var cc2 = allC[j];
+    checkItems += '<div class="check-item">' +
+      '<input type="checkbox" id="chk_' + cc2.key + '" data-key="' + cc2.key + '">' +
+      '<label for="chk_' + cc2.key + '" class="check-label">' +
+      '<div class="check-company"><span class="badge badge-' + cc2.tier + '" style="margin-right:5px">' + cc2.tier + '\u6b21</span>' +
+      esc(cc2.c.trade||'') + ' \u2014 ' + esc(cc2.c.company||'') + '</div>' +
+      '<div class="check-detail">' + esc(cc2.c.person||'') + ' / ' + esc(cc2.c.address||cc2.c.company||'') + '</div>' +
+      '</label></div>';
+  }
+
+  var html = '<div class="card">' +
+    '<div class="card-title"><i class="ti ti-file-description"></i> \u57fa\u672c\u60c5\u5831</div>' +
+    '<div class="card-row"><span class="card-label">\u73fe\u5834\u540d</span><span class="card-value">' + esc(s.name||'\u2014') + '</span></div>' +
+    '<div class="card-row"><span class="card-label">\u5143\u8acb\u540d</span><span class="card-value">' + esc(s.client||'\u2014') + '</span></div>' +
+    '<div class="card-row"><span class="card-label">\u5de5\u671f</span><span class="card-value">' + esc(s.period||'\u2014') + '</span></div>' +
+    '<div class="card-row"><span class="card-label">\u64ae\u5f71\u65e5</span><span class="card-value">' + esc(s.date||'\u2014') + '</span></div>' +
+    '<div class="card-row"><span class="card-label">\u4f4f\u6240</span><span class="card-value" style="font-size:12px">' + esc(s.address||'\u2014') + '</span></div>' +
+    '</div>' +
+    '<div class="card"><div class="card-title"><i class="ti ti-users"></i> \u65bd\u5de5\u4f53\u7cfb\uff08\u696d\u8005\u4e00\u89a7\uff09</div>' +
+    (allC.length === 0 ? '<p style="font-size:13px;color:var(--text-hint);text-align:center;padding:10px">\u696d\u8005\u60c5\u5831\u306a\u3057</p>' :
+    '<table class="ctable"><thead><tr><th>\u533a\u5206</th><th>\u5de5\u7a2e</th><th>\u696d\u8005\u540d</th><th>\u62c5\u5f53\u8005</th></tr></thead><tbody>' + trows + '</tbody></table>') +
+    '</div>' +
+    '<div class="card" style="padding:0;overflow:hidden">' +
+    '<div class="map-mock">' +
+    '<svg width="100%" height="100%" viewBox="0 0 390 180" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect width="390" height="180" fill="#dce9f5"/>' +
+    '<line x1="0" y1="95" x2="390" y2="95" stroke="#a0b8cc" stroke-width="3"/>' +
+    '<line x1="155" y1="0" x2="155" y2="180" stroke="#a0b8cc" stroke-width="2"/>' +
+    '<rect x="40" y="50" width="80" height="40" rx="3" fill="#b8ccdf"/>' +
+    '<rect x="160" y="35" width="60" height="55" rx="3" fill="#b8ccdf"/>' +
+    '<rect x="250" y="65" width="90" height="30" rx="3" fill="#b8ccdf"/>' +
+    '</svg>' +
+    '<div class="map-pin">\uD83D\uDCCD</div></div>' +
+    '<div class="map-info"><div class="map-addr">' + esc(s.address||'\u4f4f\u6240\u4e0d\u660e') + '</div>' +
+    '<div class="map-sub">\u64ae\u5f71\u65e5: ' + esc(s.date||'\u2014') + '</div>' +
+    '<button class="btn-maps" data-maplink="' + esc(mapLink) + '"><i class="ti ti-external-link"></i> Google\u30de\u30c3\u30d7\u3067\u958b\u304f</button>' +
+    '</div></div>' +
+    '<div class="card"><div class="card-title"><i class="ti ti-copy"></i> \u696d\u8005\u60c5\u5831\u30b3\u30d4\u30fc\uff08\u2460\u2461\u2462\u5f62\u5f0f\uff09</div>' +
+    (allC.length === 0 ? '<p style="font-size:13px;color:var(--text-hint);text-align:center;padding:8px">\u696d\u8005\u60c5\u5831\u304c\u3042\u308a\u307e\u305b\u3093</p>' :
+    '<div id="copy-checklist">' + checkItems + '</div>' +
+    '<div class="copy-preview" id="copy-preview">\u696d\u8005\u3092\u9078\u629e\u3059\u308b\u3068\u3053\u3053\u306b\u8868\u793a\u3055\u308c\u307e\u3059</div>' +
+    '<button class="btn-primary" id="exec-copy"><i class="ti ti-copy"></i> \u30af\u30ea\u30c3\u30d7\u30dc\u30fc\u30c9\u306b\u30b3\u30d4\u30fc</button>') +
+    '<button class="btn-outline btn-danger" id="btn-delete" style="margin-top:8px"><i class="ti ti-trash"></i> \u3053\u306e\u73fe\u5834\u3092\u524a\u9664</button>' +
+    '</div>';
+
+  var scroll = document.getElementById('detail-scroll');
+  scroll.innerHTML = html;
+
+  // Map button
+  var mapBtn = scroll.querySelector('.btn-maps');
+  if(mapBtn) mapBtn.addEventListener('click', function(){ openLink(this.getAttribute('data-maplink')); });
+
+  // Copy checkboxes
+  scroll.querySelectorAll('#copy-checklist input[type=checkbox]').forEach(function(cb){
+    cb.addEventListener('change', function(){ updateCopyPreview(allC); });
+  });
+
+  // Execute copy
+  var execBtn = scroll.querySelector('#exec-copy');
+  if(execBtn) execBtn.addEventListener('click', execCopy);
+
+  // Delete
+  var delBtn = scroll.querySelector('#btn-delete');
+  if(delBtn) delBtn.addEventListener('click', function(){ deleteSite(currentSiteId); });
 }
 
-function updatePreview() {
-  const s = sites.find(x => x.id === currentSiteId);
-  if (!s) return;
-  const allC = [...(s.primary||[]).map((c,i)=>({...c,tier:1,key:`p${i}`})),...(s.secondary||[]).map((c,i)=>({...c,tier:2,key:`s${i}`}))];
-  const sel = allC.filter(c => document.getElementById('chk_'+c.key)?.checked);
-  const el = document.getElementById('copy-preview-text');
-  if (!el) return;
-  if (sel.length===0) { el.textContent='業者を選択するとここに表示されます'; return; }
-  el.textContent = sel.map(c=>`①業者名（正式名称）\n${c.formal||c.company||'—'}\n②社長名\n${c.person||'—'}\n③住所\n${c.address||'—'}`).join('\n\n───────────\n\n');
+function updateCopyPreview(allC){
+  var sel = allC.filter(function(cc){
+    var el = document.getElementById('chk_' + cc.key);
+    return el && el.checked;
+  });
+  var el = document.getElementById('copy-preview');
+  if(!el) return;
+  if(sel.length === 0){ el.textContent = '\u696d\u8005\u3092\u9078\u629e\u3059\u308b\u3068\u3053\u3053\u306b\u8868\u793a\u3055\u308c\u307e\u3059'; return; }
+  el.textContent = sel.map(function(cc){
+    return '\u2460\u696d\u8005\u540d\uff08\u6b63\u5f0f\u540d\u79f0\uff09\n' + (cc.c.formal||cc.c.company||'\u2014') +
+      '\n\u2461\u793e\u9577\u540d\n' + (cc.c.person||'\u2014') +
+      '\n\u2462\u4f4f\u6240\n' + (cc.c.address||'\u2014');
+  }).join('\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n');
 }
 
-function execCopy() {
-  const text = document.getElementById('copy-preview-text')?.textContent;
-  if (!text || text==='業者を選択するとここに表示されます') { toast('業者を選択してください','ti-alert-circle'); return; }
-  navigator.clipboard?.writeText(text).catch(()=>{});
-  const btn = document.getElementById('exec-copy-btn');
-  if (btn) { btn.classList.add('success'); btn.innerHTML='<i class="ti ti-check"></i> コピーしました！'; }
-  toast('クリップボードにコピーしました');
-  setTimeout(()=>{ if(btn){btn.classList.remove('success');btn.innerHTML='<i class="ti ti-copy"></i> クリップボードにコピー';} },2500);
+function execCopy(){
+  var el = document.getElementById('copy-preview');
+  if(!el) return;
+  var text = el.textContent;
+  if(text === '\u696d\u8005\u3092\u9078\u629e\u3059\u308b\u3068\u3053\u3053\u306b\u8868\u793a\u3055\u308c\u307e\u3059'){ toast('\u696d\u8005\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044', true); return; }
+  if(navigator.clipboard) navigator.clipboard.writeText(text).catch(function(){});
+  var btn = document.getElementById('exec-copy');
+  if(btn){ btn.classList.add('success'); btn.innerHTML = '<i class="ti ti-check"></i> \u30b3\u30d4\u30fc\u3057\u307e\u3057\u305f\uff01'; }
+  toast('\u30af\u30ea\u30c3\u30d7\u30dc\u30fc\u30c9\u306b\u30b3\u30d4\u30fc\u3057\u307e\u3057\u305f');
+  setTimeout(function(){
+    var b = document.getElementById('exec-copy');
+    if(b){ b.classList.remove('success'); b.innerHTML = '<i class="ti ti-copy"></i> \u30af\u30ea\u30c3\u30d7\u30dc\u30fc\u30c9\u306b\u30b3\u30d4\u30fc'; }
+  }, 2500);
 }
 
-function deleteSite(id) {
-  if (!confirm('この現場データを削除しますか？')) return;
-  sites = sites.filter(s => s.id !== id);
-  save(); goTo('list'); toast('削除しました','ti-trash');
+function deleteSite(id){
+  if(!confirm('\u3053\u306e\u73fe\u5834\u30c7\u30fc\u30bf\u3092\u524a\u9664\u3057\u307e\u3059\u304b\uff1f')){ return; }
+  sites = sites.filter(function(s){ return s.id !== id; });
+  save(); goTo('list'); toast('\u524a\u9664\u3057\u307e\u3057\u305f');
 }
 
-// ── Map ──
-function renderMap() {
-  const el = document.getElementById('map-list');
-  if (sites.length===0) { el.innerHTML=`<div class="empty-state"><i class="ti ti-map-off"></i><p>現場データがありません</p></div>`; return; }
-  el.innerHTML = sites.slice().reverse().map(s => {
-    const link = s.lat && s.lng
-      ? `https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`
-      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address||'')}`;
-    return `<div class="site-item" onclick="goToDetail('${s.id}')">
-      <div style="width:44px;height:44px;border-radius:50%;background:var(--red-light);display:flex;align-items:center;justify-content:center;color:var(--red);font-size:22px;flex-shrink:0"><i class="ti ti-map-pin"></i></div>
-      <div class="site-info"><div class="site-name">${esc(s.name||'（現場名不明）')}</div><div class="site-meta">${esc(s.address||'住所不明')}</div></div>
-      <button onclick="event.stopPropagation();openLink('${link}')" style="background:none;border:0.5px solid var(--gray-border-md);border-radius:var(--radius-sm);padding:7px 10px;font-size:11px;color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:600"><i class="ti ti-external-link" style="font-size:12px"></i> 地図</button>
-    </div>`;
-  }).join('');
+// ---- MAP ----
+function renderMap(){
+  var el = document.getElementById('map-list');
+  if(sites.length === 0){ el.innerHTML = '<div class="empty-state"><i class="ti ti-map-off"></i><p>\u73fe\u5834\u30c7\u30fc\u30bf\u304c\u3042\u308a\u307e\u305b\u3093</p></div>'; return; }
+  var html = '';
+  var rev = sites.slice().reverse();
+  for(var i=0;i<rev.length;i++){
+    var s = rev[i];
+    var link = (s.lat && s.lng)
+      ? 'https://www.google.com/maps/search/?api=1&query=' + s.lat + ',' + s.lng
+      : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(s.address||'');
+    html += '<div class="site-item" data-id="' + esc(s.id) + '">' +
+      '<div style="width:44px;height:44px;border-radius:50%;background:var(--red-light);display:flex;align-items:center;justify-content:center;color:var(--red);font-size:22px;flex-shrink:0"><i class="ti ti-map-pin"></i></div>' +
+      '<div class="site-info"><div class="site-name">' + esc(s.name||'\uff08\u73fe\u5834\u540d\u4e0d\u660e\uff09') + '</div>' +
+      '<div class="site-meta">' + esc(s.address||'\u4f4f\u6240\u4e0d\u660e') + '</div></div>' +
+      '<button style="background:none;border:0.5px solid var(--gray-border-md);border-radius:var(--r-sm);padding:7px 10px;font-size:11px;color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:600" data-maplink="' + esc(link) + '">' +
+      '<i class="ti ti-external-link" style="font-size:12px"></i> \u5730\u56f3</button></div>';
+  }
+  el.innerHTML = html;
+  el.querySelectorAll('.site-item').forEach(function(item){
+    item.addEventListener('click', function(e){
+      if(e.target.closest('button[data-maplink]')){ openLink(e.target.closest('button').getAttribute('data-maplink')); return; }
+      goToDetail(this.getAttribute('data-id'));
+    });
+  });
 }
 
-// ── Settings ──
-function renderSettings() {
-  const key = localStorage.getItem('gemini_api_key') || '';
-  const hasKey = key.length > 10;
-  document.getElementById('settings-content').innerHTML = `
-    ${!hasKey ? `
-    <div class="banner banner-warn"><i class="ti ti-alert-circle"></i>
-      <div><b>APIキーが未設定です</b><span>下記の手順で無料取得してください</span></div>
-    </div>
-    <div class="card">
-      <div class="card-title"><i class="ti ti-list-numbers"></i> Gemini APIキー取得手順（無料・5分）</div>
-      <div class="steps">
-        <div class="step"><div class="step-num">1</div><div class="step-text"><b>Google AI Studioを開く</b><span>下記URLにアクセス（Googleアカウントでログイン）</span><br><a class="step-link" href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey <i class="ti ti-external-link" style="font-size:11px"></i></a></div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-text"><b>「APIキーを作成」をクリック</b><span>「Create API key」ボタンを押す</span></div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-text"><b>キーをコピー</b><span>詳細画面下の「キーをコピー」ボタンを押す</span></div></div>
-        <div class="step"><div class="step-num">4</div><div class="step-text"><b>下の欄に貼り付けて保存</b><span>クレジットカード不要・完全無料</span></div></div>
-      </div>
-    </div>` : `
-    <div class="banner banner-ok"><i class="ti ti-circle-check"></i>
-      <div><b style="color:var(--green)">APIキーが設定済みです</b><span>Gemini AIで無料解析できます（1日1,500枚まで）</span></div>
-    </div>`}
-    <div class="card">
-      <div class="card-title"><i class="ti ti-key"></i> Gemini APIキー</div>
-      <input type="password" class="setting-input" id="api-key-input" placeholder="AQ.Ab8... または AIzaSy..." value="${esc(key)}" autocomplete="off">
-      <button class="btn-primary" style="margin-top:10px" onclick="saveKey()"><i class="ti ti-device-floppy"></i> 保存する</button>
-      ${hasKey ? `<button class="btn-outline btn-danger" onclick="deleteKey()"><i class="ti ti-trash"></i> APIキーを削除</button>` : ''}
-    </div>
-    <div class="card">
-      <div class="card-title"><i class="ti ti-info-circle"></i> 無料枠について</div>
-      <div class="card-row"><span class="card-label">料金</span><span class="card-value" style="color:var(--green);font-weight:700">完全無料</span></div>
-      <div class="card-row"><span class="card-label">1日の上限</span><span class="card-value">1,500枚まで</span></div>
-      <div class="card-row"><span class="card-label">有効期限</span><span class="card-value">なし（永久）</span></div>
-      <div class="card-row"><span class="card-label">登録条件</span><span class="card-value">Googleアカウントのみ</span></div>
-    </div>
-    <div class="card">
-      <div class="card-title"><i class="ti ti-database"></i> データ管理</div>
-      <button class="btn-outline btn-danger" onclick="clearAll()"><i class="ti ti-trash"></i> すべての現場データを削除</button>
-    </div>
-    <div class="card">
-      <div class="card-title"><i class="ti ti-info-circle"></i> アプリ情報</div>
-      <div class="card-row"><span class="card-label">AIエンジン</span><span class="card-value">Google Gemini 2.5 Flash</span></div>
-      <div class="card-row"><span class="card-label">データ保存</span><span class="card-value">端末内（ローカル）</span></div>
-      <div class="card-row"><span class="card-label">バージョン</span><span class="card-value">2.0.0</span></div>
-    </div>`;
+// ---- SETTINGS ----
+function renderSettings(){
+  var key = '';
+  try{ key = localStorage.getItem('gemini_api_key') || ''; }catch(e){}
+  var hasKey = key.length > 10;
+  var html = '';
+  if(!hasKey){
+    html += '<div class="banner banner-warn" style="margin:0 0 14px"><i class="ti ti-alert-circle"></i><div><b>API\u30ad\u30fc\u304c\u672a\u8a2d\u5b9a\u3067\u3059</b><span>\u4e0b\u8a18\u306e\u624b\u9806\u3067\u7121\u6599\u53d6\u5f97\u3057\u3066\u304f\u3060\u3055\u3044</span></div></div>' +
+      '<div class="card"><div class="card-title"><i class="ti ti-list-numbers"></i> Gemini API\u30ad\u30fc\u53d6\u5f97\u624b\u9806\uff085\u5206\uff09</div>' +
+      '<div class="steps">' +
+      '<div class="step"><div class="step-num">1</div><div class="step-text"><b>Google AI Studio\u3092\u958b\u304f</b><span><a class="step-link" href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a></span></div></div>' +
+      '<div class="step"><div class="step-num">2</div><div class="step-text"><b>Google\u30a2\u30ab\u30a6\u30f3\u30c8\u3067\u30ed\u30b0\u30a4\u30f3</b><span>Gmail\u30a2\u30c9\u30ec\u30b9\u3067OK</span></div></div>' +
+      '<div class="step"><div class="step-num">3</div><div class="step-text"><b>\u300cCreate API key\u300d\u3092\u30af\u30ea\u30c3\u30af</b><span>\u30ad\u30fc\u3092\u5f15\u7528\u7b26\u306a\u3057\u3067\u30b3\u30d4\u30fc</span></div></div>' +
+      '<div class="step"><div class="step-num">4</div><div class="step-text"><b>\u4e0b\u306e\u6b04\u306b\u8cbc\u308a\u4ed8\u3051\u3066\u4fdd\u5b58</b><span>\u30af\u30ec\u30b8\u30c3\u30c8\u30ab\u30fc\u30c9\u4e0d\u8981\u30fb\u5b8c\u5168\u7121\u6599</span></div></div>' +
+      '</div></div>';
+  } else {
+    html += '<div class="banner banner-ok" style="margin:0 0 14px"><i class="ti ti-circle-check"></i><div><b style="color:var(--green)">API\u30ad\u30fc\u304c\u8a2d\u5b9a\u6e08\u307f\u3067\u3059</b><span>Gemini AI\u3067\u7121\u6599\u89e3\u6790\u3067\u304d\u307e\u3059\uff081\u65e51,500\u679a\u307e\u3067\uff09</span></div></div>';
+  }
+  html += '<div class="card"><div class="card-title"><i class="ti ti-key"></i> Gemini API\u30ad\u30fc</div>' +
+    '<input type="password" class="setting-input" id="api-key-input" placeholder="AIzaSy... \u307e\u305f\u306f AQ.Ab8..." value="' + esc(key) + '" autocomplete="off">' +
+    '<button class="btn-primary" id="btn-save-key" style="margin-top:10px"><i class="ti ti-device-floppy"></i> \u4fdd\u5b58\u3059\u308b</button>' +
+    (hasKey ? '<button class="btn-outline btn-danger" id="btn-del-key"><i class="ti ti-trash"></i> API\u30ad\u30fc\u3092\u524a\u9664</button>' : '') +
+    '</div>' +
+    '<div class="card"><div class="card-title"><i class="ti ti-info-circle"></i> \u7121\u6599\u67a0\u306b\u3064\u3044\u3066</div>' +
+    '<div class="card-row"><span class="card-label">\u6599\u91d1</span><span class="card-value" style="color:var(--green);font-weight:700">\u5b8c\u5168\u7121\u6599</span></div>' +
+    '<div class="card-row"><span class="card-label">1\u65e5\u306e\u4e0a\u9650</span><span class="card-value">1,500\u679a\u307e\u3067</span></div>' +
+    '<div class="card-row"><span class="card-label">\u6709\u52b9\u671f\u9650</span><span class="card-value">\u306a\u3057\uff08\u6c38\u4e45\uff09</span></div>' +
+    '</div>' +
+    '<div class="card"><div class="card-title"><i class="ti ti-database"></i> \u30c7\u30fc\u30bf\u7ba1\u7406</div>' +
+    '<button class="btn-outline btn-danger" id="btn-clear-all"><i class="ti ti-trash"></i> \u3059\u3079\u3066\u306e\u30c7\u30fc\u30bf\u3092\u524a\u9664</button></div>';
+
+  var el = document.getElementById('settings-content');
+  el.innerHTML = html;
+
+  document.getElementById('btn-save-key').addEventListener('click', function(){
+    var k = document.getElementById('api-key-input').value.trim();
+    if(!k){ toast('API\u30ad\u30fc\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044', true); return; }
+    try{ localStorage.setItem('gemini_api_key', k); }catch(e){}
+    toast('API\u30ad\u30fc\u3092\u4fdd\u5b58\u3057\u307e\u3057\u305f');
+    renderSettings();
+  });
+
+  var delKey = document.getElementById('btn-del-key');
+  if(delKey) delKey.addEventListener('click', function(){
+    if(!confirm('API\u30ad\u30fc\u3092\u524a\u9664\u3057\u307e\u3059\u304b\uff1f')) return;
+    try{ localStorage.removeItem('gemini_api_key'); }catch(e){}
+    renderSettings();
+  });
+
+  document.getElementById('btn-clear-all').addEventListener('click', function(){
+    if(!confirm('\u3059\u3079\u3066\u306e\u73fe\u5834\u30c7\u30fc\u30bf\u3092\u524a\u9664\u3057\u307e\u3059\u304b\uff1f')) return;
+    sites = []; save(); toast('\u524a\u9664\u3057\u307e\u3057\u305f'); renderSettings();
+  });
 }
 
-function saveKey() {
-  const k = document.getElementById('api-key-input').value.trim();
-  if (!k) { toast('APIキーを入力してください','ti-alert-circle'); return; }
-  if (k.length < 20) { toast('APIキーが短すぎます。正しくコピーされているか確認してください','ti-alert-circle'); return; }
-  localStorage.setItem('gemini_api_key', k);
-  toast('APIキーを保存しました');
-  renderSettings();
-}
-function deleteKey() {
-  if (!confirm('APIキーを削除しますか？')) return;
-  localStorage.removeItem('gemini_api_key'); renderSettings();
-}
-function clearAll() {
-  if (!confirm('すべての現場データを削除しますか？この操作は元に戻せません。')) return;
-  sites=[]; save(); toast('削除しました','ti-trash'); renderSettings();
-}
+// ---- CAMERA / FILE ----
+document.getElementById('btn-camera').addEventListener('click', function(){ document.getElementById('file-camera').click(); });
+document.getElementById('btn-gallery').addEventListener('click', function(){ document.getElementById('file-gallery').click(); });
+document.getElementById('btn-pdf').addEventListener('click', function(){ document.getElementById('file-pdf').click(); });
 
-// ── Camera ──
-function onPdfSelected(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  selectedFile = file;
-  selectedMime = 'application/pdf';
-  const reader = new FileReader();
-  reader.onload = ev => {
-    selectedImageBase64 = ev.target.result.split(',')[1];
-    document.getElementById('pdf-filename').textContent = file.name;
-    document.getElementById('pdf-filesize').textContent = (file.size / 1024).toFixed(0) + ' KB';
-    document.getElementById('pdf-preview-wrap').style.display = 'block';
-    document.getElementById('img-preview-wrap').style.display = 'none';
-    document.getElementById('analyze-btn-wrap').style.display = 'block';
-  };
-  reader.readAsDataURL(file);
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(pos => {
-      currentLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-    }, () => { currentLocation = null; });
+document.getElementById('file-camera').addEventListener('change', function(){ onFileSelected(this); });
+document.getElementById('file-gallery').addEventListener('change', function(){ onFileSelected(this); });
+document.getElementById('file-pdf').addEventListener('change', function(){ onPdfSelected(this); });
+
+document.getElementById('btn-analyze').addEventListener('click', startAnalysis);
+document.getElementById('btn-clear').addEventListener('click', clearFile);
+document.getElementById('btn-url').addEventListener('click', startUrlAnalysis);
+
+function getLocation(){
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(function(pos){
+      currentLoc = {lat: pos.coords.latitude, lng: pos.coords.longitude};
+    }, function(){ currentLoc = null; });
   }
 }
 
-function onFileSelected(e) {
-  const file = e.target.files[0];
-  if (!file) return;
+function onFileSelected(input){
+  var file = input.files[0];
+  if(!file) return;
   selectedFile = file;
   selectedMime = file.type || 'image/jpeg';
-  document.getElementById('pdf-preview-wrap').style.display = 'none';
-  const reader = new FileReader();
-  reader.onload = ev => {
-    selectedImageBase64 = ev.target.result.split(',')[1];
-    document.getElementById('img-preview').src = ev.target.result;
+  pdfText = null;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    selectedB64 = e.target.result.split(',')[1];
+    document.getElementById('img-preview').src = e.target.result;
     document.getElementById('img-preview-wrap').style.display = 'block';
-    document.getElementById('analyze-btn-wrap').style.display = 'block';
+    document.getElementById('pdf-preview-wrap').style.display = 'none';
+    document.getElementById('analyze-wrap').style.display = 'block';
   };
   reader.readAsDataURL(file);
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(pos => {
-      currentLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-    }, () => { currentLocation = null; });
-  }
+  getLocation();
 }
-function clearImage() {
-  selectedFile = selectedImageBase64 = null;
+
+function onPdfSelected(input){
+  var file = input.files[0];
+  if(!file) return;
+  selectedFile = file;
+  selectedMime = 'application/pdf';
+  selectedB64 = null;
+  pdfText = null;
+  document.getElementById('pdf-name').textContent = file.name;
+  document.getElementById('pdf-size').textContent = Math.round(file.size/1024) + ' KB - \u30c6\u30ad\u30b9\u30c8\u62bd\u51fa\u4e2d...';
+  document.getElementById('pdf-preview-wrap').style.display = 'block';
+  document.getElementById('img-preview-wrap').style.display = 'none';
+  document.getElementById('analyze-wrap').style.display = 'block';
+  getLocation();
+
+  // Extract text with PDF.js
+  if(typeof pdfjsLib === 'undefined'){ document.getElementById('pdf-size').textContent = Math.round(file.size/1024) + ' KB'; return; }
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var data = e.target.result;
+    pdfjsLib.getDocument({data: data}).promise.then(function(pdf){
+      var pages = Math.min(pdf.numPages, 10);
+      var texts = [];
+      var p = Promise.resolve();
+      for(var i=1;i<=pages;i++){
+        (function(pageNum){
+          p = p.then(function(){
+            return pdf.getPage(pageNum).then(function(page){
+              return page.getTextContent().then(function(tc){
+                texts.push(tc.items.map(function(it){ return it.str; }).join(' '));
+              });
+            });
+          });
+        })(i);
+      }
+      p.then(function(){
+        pdfText = texts.join('\n').trim();
+        document.getElementById('pdf-size').textContent = Math.round(file.size/1024) + ' KB - ' + pdf.numPages + '\u30da\u30fc\u30b8\uff08\u62bd\u51fa\u5b8c\u4e86\uff09';
+      });
+    }).catch(function(){
+      document.getElementById('pdf-size').textContent = Math.round(file.size/1024) + ' KB';
+    });
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function clearFile(){
+  selectedFile = null; selectedB64 = null; pdfText = null;
   selectedMime = 'image/jpeg';
-  document.getElementById('img-preview-wrap').style.display='none';
-  document.getElementById('pdf-preview-wrap').style.display='none';
-  document.getElementById('analyze-btn-wrap').style.display='none';
-  document.getElementById('file-camera').value='';
-  document.getElementById('file-gallery').value='';
-  document.getElementById('file-pdf').value='';
+  document.getElementById('img-preview-wrap').style.display = 'none';
+  document.getElementById('pdf-preview-wrap').style.display = 'none';
+  document.getElementById('analyze-wrap').style.display = 'none';
+  document.getElementById('file-camera').value = '';
+  document.getElementById('file-gallery').value = '';
+  document.getElementById('file-pdf').value = '';
 }
 
-// ── AI Analysis (Gemini) ──
-async function startAnalysis() {
-  const apiKey = localStorage.getItem('gemini_api_key');
-  if (!apiKey) { toast('設定でGemini APIキーを入力してください','ti-key'); setTimeout(()=>goTo('settings'),1200); return; }
-  if (!selectedImageBase64) { toast('写真を選択してください','ti-alert-circle'); return; }
+// ---- AI PROMPT ----
+var PROMPT = '\u5efa\u8a2d\u73fe\u5834\u306e\u65bd\u5de5\u4f53\u7cfb\u56f3\u30c6\u30ad\u30b9\u30c8\u304b\u3089\u60c5\u5831\u3092\u62bd\u51fa\u3057\u3066JSON\u3067\u8fd4\u3057\u3066\u304f\u3060\u3055\u3044\u3002\n\n\u62bd\u51fa\u30eb\u30fc\u30eb:\n- name: \u300c\u5de5\u4e8b\u540d\u79f0\u300d\u306e\u5024 (\u4f8b: \u6cb3\u5185\u9577\u91ce\u5e02\u65b0\u5b66\u6821\u7d66\u98df\u30bb\u30f3\u30bf\u30fc\u6574\u5099\u904b\u55b6\u4e8b\u696d)\n- client: \u300c\u5143\u8acb\u540d\u30fb\u4e8b\u696d\u8005ID\u300d\u306e\u300cID(\u6570\u5b57)\u300d\u3088\u308a\u524d\u306e\u4f1a\u793e\u540d\u306e\u307f (\u4f8b: \u30d5\u30b8\u30bf\u30fb\u6728\u8c37\u7279\u5b9a\u5efa\u8a2d\u5de5\u4e8b\u5171\u540c\u4f01\u696d\u4f53)\n- period: \u5de5\u671f\n- address: \u73fe\u5834\u4f4f\u6240\n- primary: \u5404\u696d\u8005\u306e\u914d\u5217\u3002\u5404\u30a8\u30f3\u30c8\u30ea\u306e\u30d5\u30a3\u30fc\u30eb\u30c9:\n  - trade: \u5de5\u7a2e\u540d (\u4f8b: \u4eee\u8a2d\u5de5\u4e8b, \u96fb\u6c17\u8a2d\u5099\u5de5\u4e8b)\n  - company: \u300c\u4f1a\u793e\u540d\u30fb\u4e8b\u696d\u8005ID\u300d\u306e\u4f1a\u793e\u540d\u306e\u307f(ID\u9664\u304f) (\u4f8b: \u682a\u5f0f\u4f1a\u793e\u30c7\u30b6\u30a4\u30f3\u30a2\u30fc\u30af)\n  - formal: company\u3068\u540c\u3058\n  - person: \u300c\u4ee3\u8868\u8005\u540d\u300d\u306e\u5024 (\u4f8b: \u4e09\u539f \u5eb7\u5c55)\n  - address: \u7a7a\u6587\u5b57\n- secondary: \u7a7a\u914d\u5217 []\n\n\u6ce8\u610f: \u4f1a\u793e\u540d\u306b(ID\u756a\u53f7)\u3092\u7d76\u5bfe\u306b\u542b\u3081\u306a\u3044\u3002\u6700\u592780\u793e\u306b\u7d5e\u308b\u3002\n\n\u8fd4\u5374\u5f62\u5f0f: JSON\u306e\u307f\u3002\u8aac\u660e\u6587\u4e0d\u8981\u3002\u30b3\u30fc\u30c9\u30d6\u30ed\u30c3\u30af\u4e0d\u8981\u3002\u5fc5\u305a\u6700\u5f8c\u306e]}\u307e\u3067\u5b8c\u7d50\u3059\u308b\u3002';
 
-  document.getElementById('analyze-btn-wrap').style.display='none';
-  document.getElementById('analyzing-wrap').style.display='block';
+function getApiUrl(key, model){
+  if(key.startsWith('AQ.')){
+    return {url: 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', headers: {'Content-Type':'application/json','x-goog-api-key': key}};
+  }
+  return {url: 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + key, headers: {'Content-Type':'application/json'}};
+}
 
-  const steps = ['施工体系図を読み取り中...','文字認識（OCR）処理中...','業者情報を構造化中...','データを整理中...'];
-  let si = 0;
-  const stepEl = document.getElementById('analyzing-step-text');
-  const prog = document.getElementById('prog');
-  const iv = setInterval(() => {
-    if (si < steps.length) { stepEl.textContent=steps[si]; prog.style.width=((si+1)/steps.length*80)+'%'; si++; }
+function repairJson(text) {
+  text = text.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+  var si = text.indexOf('{');
+  if (si < 0) throw new Error('データが見つかりません');
+  text = text.slice(si);
+  try { return JSON.parse(text); } catch(e) {}
+  var nameM = text.match(/"name"[ ]*:[ ]*"([^"]+)"/);
+  var clientM = text.match(/"client"[ ]*:[ ]*"([^"]+)"/);
+  var periodM = text.match(/"period"[ ]*:[ ]*"([^"]+)"/);
+  var entries = [];
+  var re = /"trade"[ ]*:[ ]*"([^"]*)"[ ,\n]*"company"[ ]*:[ ]*"([^"]*)"[ ,\n]*"formal"[ ]*:[ ]*"([^"]*)"[ ,\n]*"person"[ ]*:[ ]*"([^"]*)"[ ,\n]*"address"[ ]*:[ ]*"([^"]*)"/g;
+  var em;
+  while ((em = re.exec(text)) !== null) {
+    entries.push({trade:em[1],company:em[2],formal:em[3],person:em[4],address:em[5]});
+  }
+  if (entries.length > 0) {
+    return {name:nameM?nameM[1]:'',client:clientM?clientM[1]:'',period:periodM?periodM[1]:'',address:'',primary:entries,secondary:[]};
+  }
+  throw new Error('解析失敗。再度お試しください');
+}
+
+function parseAiResponse(text){
+  return repairJson(text);
+}
+
+function setStep(stepEl, progEl, text, pct){
+  if(stepEl) stepEl.textContent = text;
+  if(progEl) progEl.style.width = pct + '%';
+}
+
+function saveSite(parsed){
+  var ns = {id: Date.now().toString(), date: today(), lat: currentLoc ? currentLoc.lat : null, lng: currentLoc ? currentLoc.lng : null};
+  Object.assign(ns, parsed);
+  sites.push(ns);
+  save();
+}
+
+// ---- PDF TEXT COMPRESSION ----
+function compressPdfText(text) {
+  console.log('PDF text length:', text.length);
+  console.log('PDF text sample:', text.slice(0,200));
+  var marker = '\u4f01\u696d\u540d\u30fb\u4e8b\u696d\u8005ID'; // 企業名・事業者ID
+  var repMk  = '\u4ee3\u8868\u8005\u540d'; // 代表者名
+
+  var parts = text.split(marker);
+  console.log('Split into parts:', parts.length);
+  if(parts.length > 1) console.log('Part 1 sample:', parts[1].slice(0,100));
+  var entries = [];
+
+  for (var i = 1; i < parts.length && entries.length < 90; i++) {
+    var block = parts[i];
+
+    // Company name: text before the ID number (which has spaces inserted by PDF.js)
+    var cm = block.match(/^\s+(.+?)\s*[\(\uff08][\d\s]+[\)\uff09]/);
+    if (!cm) continue;
+    // Remove internal spaces from company name (PDF.js word-wraps within names)
+    var company = cm[1].replace(/\s+/g, '');
+    if (!company || company.length < 2) continue;
+
+    // Representative name: after 代表者名 marker
+    var rm = block.match(new RegExp(repMk + '\\s+([^\\s\\u5efa\\u5b89\\u4e3b\\u7279\\u5c02\\u62c5\\u5de5\\u671f]{1,8}(?:\\s+[^\\s\\u5efa\\u5b89\\u4e3b\\u7279\\u5c02\\u62c5\\u5de5\\u671f]{1,8})?)'));
+    var person = rm ? rm[1].trim() : '';
+
+    // Trade name: last Japanese trade-type word in previous block
+    var prev = parts[i - 1];
+    var tm = prev.replace(/\n/g, ' ').match(/([\u4e00-\u9fa5]{2,8}\u5de5\u4e8b)\s*$/);
+    var trade = tm ? tm[1] : '\u5de5\u4e8b';
+
+    entries.push(trade + '|' + company + '|' + person);
+  }
+
+  // Header: first 500 chars for project/client/period
+  var header = text.slice(0, 500);
+
+  if (entries.length < 3) {
+    // Fallback: raw text if extraction failed
+    return text.slice(0, 10000);
+  }
+
+  return '\u57fa\u672c\u60c5\u5831:\n' + header +
+    '\n\n\u696d\u8005\u4e00\u89a7(\u5de5\u7a2e|\u4f1a\u793e\u540d|\u4ee3\u8868\u8005):\n' +
+    entries.join('\n');
+}
+
+// ---- IMAGE/PDF ANALYSIS ----// ---- IMAGE/PDF ANALYSIS ----// ---- IMAGE/PDF ANALYSIS ----
+function startAnalysis(){
+  var key = '';
+  try{ key = localStorage.getItem('gemini_api_key') || ''; }catch(e){}
+  if(!key){ toast('API\u30ad\u30fc\u3092\u8a2d\u5b9a\u3057\u3066\u304f\u3060\u3055\u3044', true); setTimeout(function(){ goTo('settings'); }, 1200); return; }
+
+  document.getElementById('analyze-wrap').style.display = 'none';
+  document.getElementById('analyzing-card').style.display = 'block';
+  var stepEl = document.getElementById('analyzing-step');
+  var progEl = document.getElementById('prog');
+
+  var steps = ['\u65bd\u5de5\u4f53\u7cfb\u56f3\u3092\u8aad\u307f\u53d6\u308a\u4e2d...', '\u6587\u5b57\u8a8d\u8b58\u4e2d...', '\u696d\u8005\u60c5\u5831\u3092\u69cb\u9020\u5316\u4e2d...', '\u30c7\u30fc\u30bf\u3092\u6574\u7406\u4e2d...'];
+  var si = 0;
+  var iv = setInterval(function(){
+    if(si < steps.length){ setStep(stepEl, progEl, steps[si], (si+1)/steps.length*75); si++; }
   }, 1200);
 
-  try {
-    const prompt = `この画像は建設現場の施工体系図です。画像から情報を正確に読み取り、必ずJSON形式のみで返してください（説明文・コードブロック・マークダウン不要）。
+  var apiInfo = getApiUrl(key, 'gemini-2.5-flash-lite');
 
-{
-  "name": "現場名",
-  "client": "元請会社名（正式名称）",
-  "period": "工期（例: 2024/4/1〜2025/3/31）",
-  "address": "現場住所（記載があれば）",
-  "primary": [
-    {
-      "trade": "工種名",
-      "company": "業者名（略称）",
-      "formal": "業者名（正式名称。株式会社・有限会社等を補完）",
-      "person": "担当者名または社長名",
-      "address": "住所（記載があれば）"
-    }
-  ],
-  "secondary": [
-    {
-      "trade": "工種名",
-      "company": "業者名（略称）",
-      "formal": "業者名（正式名称）",
-      "person": "担当者名または社長名",
-      "address": "住所（記載があれば）"
-    }
-  ]
-}
-
-注意:
-- primaryは1次業者、secondaryは2次業者
-- 画像が多少荒くても文脈から推測して補完すること
-- 読み取れない箇所は空文字
-- JSONのみ返すこと。それ以外は一切出力しない`;
-
-    const isNewKey = apiKey.startsWith('AQ.');
-    const apiUrl = isNewKey
-      ? 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent'
-      : `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-    const reqHeaders = {'Content-Type': 'application/json'};
-    if (isNewKey) reqHeaders['x-goog-api-key'] = apiKey;
-
-    const res = await fetch(apiUrl,
-      {
-        method: 'POST',
-        headers: reqHeaders,
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { inline_data: { mime_type: selectedMime, data: selectedImageBase64 } },
-              { text: prompt }
-            ]
-          }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
-        })
-      }
-    );
-
-    clearInterval(iv);
-    prog.style.width = '100%';
-
-    if (!res.ok) {
-      const err = await res.json().catch(()=>({}));
-      const msg = err.error?.message || `APIエラー (${res.status})`;
-      // key invalid check
-      if (res.status===400 || res.status===403) throw new Error('APIキーが正しくないか無効です: ' + msg);
-      throw new Error(msg);
-    }
-
-    const data = await res.json();
-    let text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    text = text.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
-
-    let parsed;
-    try { parsed = JSON.parse(text); }
-    catch(e) {
-      // Try to extract JSON from text
-      const m = text.match(/\{[\s\S]*\}/);
-      if (m) parsed = JSON.parse(m[0]);
-      else throw new Error('AIの返答をJSONとして解析できませんでした');
-    }
-
-    const today = new Date();
-    const newSite = {
-      id: Date.now().toString(),
-      date: `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`,
-      lat: currentLocation?.lat || null,
-      lng: currentLocation?.lng || null,
-      ...parsed,
+  // Build request body
+  var body;
+  if(selectedMime === 'application/pdf' && pdfText){
+    // Preprocess PDF text to compress company info
+    var compressedText = compressPdfText(pdfText);
+    body = {
+      contents:[{parts:[{text: PROMPT + '\n\n' + compressedText}]}],
+      generationConfig:{temperature:0.1, maxOutputTokens:4096}
     };
-    sites.push(newSite);
-    save();
-
-    document.getElementById('analyzing-wrap').style.display='none';
-    clearImage();
-    toast('解析完了！現場を登録しました');
-    setTimeout(()=>goTo('list'), 800);
-
-  } catch(e) {
+  } else if(selectedB64){
+    body = {
+      contents:[{parts:[{inline_data:{mime_type: selectedMime, data: selectedB64}},{text: PROMPT}]}],
+      generationConfig:{temperature:0.1, maxOutputTokens:4096}
+    };
+  } else {
     clearInterval(iv);
-    document.getElementById('analyzing-wrap').style.display='none';
-    document.getElementById('analyze-btn-wrap').style.display='block';
-    toast('エラー: '+e.message, 'ti-alert-circle');
-    console.error(e);
+    document.getElementById('analyzing-card').style.display = 'none';
+    document.getElementById('analyze-wrap').style.display = 'block';
+    toast('\u30d5\u30a1\u30a4\u30eb\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044', true);
+    return;
   }
+
+  fetch(apiInfo.url, {method:'POST', headers: apiInfo.headers, body: JSON.stringify(body)})
+    .then(function(res){
+      clearInterval(iv);
+      setStep(stepEl, progEl, '\u5b8c\u4e86', 100);
+      if(!res.ok) return res.json().then(function(e){ throw new Error((e.error && e.error.message) || 'API\u30a8\u30e9\u30fc ' + res.status); });
+      return res.json();
+    })
+    .then(function(data){
+      var text = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] ? data.candidates[0].content.parts[0].text : '';
+      var parsed = parseAiResponse(text);
+      saveSite(parsed);
+      document.getElementById('analyzing-card').style.display = 'none';
+      clearFile();
+      toast('\u89e3\u6790\u5b8c\u4e86\uff01\u73fe\u5834\u3092\u767b\u9332\u3057\u307e\u3057\u305f');
+      setTimeout(function(){ goTo('list'); }, 800);
+    })
+    .catch(function(err){
+      clearInterval(iv);
+      document.getElementById('analyzing-card').style.display = 'none';
+      document.getElementById('analyze-wrap').style.display = 'block';
+      toast('\u30a8\u30e9\u30fc: ' + err.message, true);
+      console.error(err);
+    });
 }
 
-// ── URL Analysis ──
-async function startUrlAnalysis() {
-  const apiKey = localStorage.getItem('gemini_api_key');
-  if (!apiKey) { toast('設定でGemini APIキーを入力してください','ti-key'); setTimeout(()=>goTo('settings'),1200); return; }
+// ---- URL ANALYSIS ----
+function startUrlAnalysis(){
+  var key = '';
+  try{ key = localStorage.getItem('gemini_api_key') || ''; }catch(e){}
+  if(!key){ toast('API\u30ad\u30fc\u3092\u8a2d\u5b9a\u3057\u3066\u304f\u3060\u3055\u3044', true); setTimeout(function(){ goTo('settings'); }, 1200); return; }
 
-  const url = document.getElementById('url-input').value.trim();
-  if (!url || !url.startsWith('http')) { toast('正しいURLを入力してください','ti-alert-circle'); return; }
+  var url = document.getElementById('url-input').value.trim();
+  if(!url || url.indexOf('http') !== 0){ toast('\u6b63\u3057\u3044URL\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044', true); return; }
 
   document.getElementById('url-input').disabled = true;
-  document.getElementById('url-analyzing-wrap').style.display = 'block';
-  const stepEl = document.getElementById('url-step-text');
-  const prog = document.getElementById('url-prog');
+  document.getElementById('btn-url').disabled = true;
+  document.getElementById('url-analyzing').style.display = 'block';
+  var stepEl = document.getElementById('url-step');
+  var progEl = document.getElementById('url-prog');
 
-  const steps = ['URLにアクセス中...','ページを読み取り中...','AIが解析中...','データを整理中...'];
-  let si = 0;
-  const iv = setInterval(() => {
-    if (si < steps.length) { stepEl.textContent=steps[si]; prog.style.width=((si+1)/steps.length*75)+'%'; si++; }
+  var steps = ['URL\u306b\u30a2\u30af\u30bb\u30b9\u4e2d...', '\u30da\u30fc\u30b8\u3092\u8aad\u307f\u53d6\u308a\u4e2d...', 'AI\u304c\u89e3\u6790\u4e2d...', '\u30c7\u30fc\u30bf\u3092\u6574\u7406\u4e2d...'];
+  var si = 0;
+  var iv = setInterval(function(){
+    if(si < steps.length){ setStep(stepEl, progEl, steps[si], (si+1)/steps.length*75); si++; }
   }, 1500);
 
-  try {
-    // Use allorigins proxy to fetch the page
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-    const fetchRes = await fetch(proxyUrl);
-    if (!fetchRes.ok) throw new Error('ページの取得に失敗しました');
-    const fetchData = await fetchRes.json();
-    const html = fetchData.contents || '';
+  var proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+  fetch(proxyUrl)
+    .then(function(r){ if(!r.ok) throw new Error('\u30da\u30fc\u30b8\u306e\u53d6\u5f97\u306b\u5931\u6557\u3057\u307e\u3057\u305f'); return r.json(); })
+    .then(function(d){
+      var html = d.contents || '';
+      var parser = new DOMParser();
+      var doc = parser.parseFromString(html, 'text/html');
+      doc.querySelectorAll('script,style,nav,footer,header').forEach(function(el){ el.remove(); });
+      var text = (doc.body ? (doc.body.innerText || doc.body.textContent) : '').replace(/\s+/g,' ').trim().slice(0,6000);
+      if(text.length < 30) throw new Error('\u30da\u30fc\u30b8\u304b\u3089\u30c6\u30ad\u30b9\u30c8\u3092\u53d6\u5f97\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f\u3002\u30b9\u30af\u30ea\u30fc\u30f3\u30b7\u30e7\u30c3\u30c8\u3067\u304a\u8a66\u3057\u304f\u3060\u3055\u3044');
 
-    // Extract text from HTML
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    // Remove scripts, styles, nav elements
-    doc.querySelectorAll('script,style,nav,footer,header').forEach(el => el.remove());
-    const text = doc.body?.innerText || doc.body?.textContent || '';
-    const cleanText = text.replace(/\s+/g,' ').trim().slice(0, 8000);
-
-    if (cleanText.length < 50) throw new Error('ページからテキストを取得できませんでした。スクリーンショットでお試しください。');
-
-    const prompt = `以下は建設現場の施工体系図ページから取得したテキストです。この情報から業者情報を読み取り、必ずJSON形式のみで返してください（説明文・コードブロック不要）。
-
-テキスト:
-${cleanText}
-
-{
-  "name": "現場名",
-  "client": "元請会社名",
-  "period": "工期",
-  "address": "現場住所",
-  "primary": [
-    { "trade": "工種名", "company": "業者名", "formal": "正式名称", "person": "担当者名", "address": "住所" }
-  ],
-  "secondary": [
-    { "trade": "工種名", "company": "業者名", "formal": "正式名称", "person": "担当者名", "address": "住所" }
-  ]
-}
-
-JSONのみ返すこと。`;
-
-    const isNewKey = apiKey.startsWith('AQ.');
-    const apiUrl = isNewKey
-      ? 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent'
-      : `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-    const reqHeaders = {'Content-Type': 'application/json'};
-    if (isNewKey) reqHeaders['x-goog-api-key'] = apiKey;
-
-    const res = await fetch(apiUrl, {
-      method: 'POST',
-      headers: reqHeaders,
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
-      })
+      var apiInfo = getApiUrl(key, 'gemini-2.5-flash-lite');
+      return fetch(apiInfo.url, {
+        method:'POST',
+        headers: apiInfo.headers,
+        body: JSON.stringify({
+          contents:[{parts:[{text: PROMPT + '\n\n\u4ee5\u4e0b\u306fWeb\u30da\u30fc\u30b8\u304b\u3089\u53d6\u5f97\u3057\u305f\u30c6\u30ad\u30b9\u30c8\u3067\u3059:\n' + text}]}],
+          generationConfig:{temperature:0.1, maxOutputTokens:4096}
+        })
+      });
+    })
+    .then(function(res){
+      clearInterval(iv);
+      setStep(stepEl, progEl, '\u5b8c\u4e86', 100);
+      if(!res.ok) return res.json().then(function(e){ throw new Error((e.error && e.error.message) || 'API\u30a8\u30e9\u30fc ' + res.status); });
+      return res.json();
+    })
+    .then(function(data){
+      var text = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] ? data.candidates[0].content.parts[0].text : '';
+      var parsed = parseAiResponse(text);
+      saveSite(parsed);
+      document.getElementById('url-analyzing').style.display = 'none';
+      document.getElementById('url-input').disabled = false;
+      document.getElementById('btn-url').disabled = false;
+      document.getElementById('url-input').value = '';
+      toast('\u89e3\u6790\u5b8c\u4e86\uff01\u73fe\u5834\u3092\u767b\u9332\u3057\u307e\u3057\u305f');
+      setTimeout(function(){ goTo('list'); }, 800);
+    })
+    .catch(function(err){
+      clearInterval(iv);
+      document.getElementById('url-analyzing').style.display = 'none';
+      document.getElementById('url-input').disabled = false;
+      document.getElementById('btn-url').disabled = false;
+      toast('\u30a8\u30e9\u30fc: ' + err.message, true);
+      console.error(err);
     });
-
-    clearInterval(iv);
-    prog.style.width = '100%';
-
-    if (!res.ok) {
-      const err = await res.json().catch(()=>({}));
-      throw new Error(err.error?.message || `APIエラー (${res.status})`);
-    }
-
-    const data = await res.json();
-    let responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    responseText = responseText.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
-
-    let parsed;
-    try { parsed = JSON.parse(responseText); }
-    catch(e) {
-      const m = responseText.match(/\{[\s\S]*\}/);
-      if (m) parsed = JSON.parse(m[0]);
-      else throw new Error('AIの返答を解析できませんでした');
-    }
-
-    const today = new Date();
-    const newSite = {
-      id: Date.now().toString(),
-      date: `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`,
-      sourceUrl: url,
-      lat: currentLocation?.lat || null,
-      lng: currentLocation?.lng || null,
-      ...parsed,
-    };
-    sites.push(newSite);
-    save();
-
-    document.getElementById('url-analyzing-wrap').style.display='none';
-    document.getElementById('url-input').value='';
-    document.getElementById('url-input').disabled=false;
-    toast('解析完了！現場を登録しました');
-    setTimeout(()=>goTo('list'), 800);
-
-  } catch(e) {
-    clearInterval(iv);
-    document.getElementById('url-analyzing-wrap').style.display='none';
-    document.getElementById('url-input').disabled=false;
-    toast('エラー: '+e.message, 'ti-alert-circle');
-    console.error(e);
-  }
 }
 
-// ── Init ──
+// ---- INIT ----
 renderList();
+
+})();
 </script>
 </body>
 </html>
