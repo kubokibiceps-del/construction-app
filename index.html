@@ -218,10 +218,10 @@
       <div><div class="topbar-title">撮影・解析</div><div class="topbar-sub">施工体系図をAIで自動読み取り</div></div>
     </div>
     <div class="scroll">
-      <!-- 方法①：撮影・画像選択 -->
+      <!-- 方法①：撮影・画像・PDF -->
       <div class="card">
-        <div class="card-title"><i class="ti ti-camera"></i> 方法① 写真から解析</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div class="card-title"><i class="ti ti-camera"></i> 方法① ファイルから解析</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
           <button class="btn-primary" style="font-size:13px;padding:12px 8px" onclick="document.getElementById('file-camera').click()">
             <i class="ti ti-camera"></i><br>カメラで撮影
           </button>
@@ -229,15 +229,30 @@
             <i class="ti ti-photo"></i><br>過去の写真を選ぶ
           </button>
         </div>
+        <button class="btn-outline" style="margin-top:0;border-color:var(--red);color:var(--red);font-size:13px;padding:11px" onclick="document.getElementById('file-pdf').click()">
+          <i class="ti ti-file-type-pdf"></i> PDFファイルを選ぶ
+        </button>
         <input type="file" id="file-camera" accept="image/*" capture="environment" onchange="onFileSelected(event)" style="display:none">
         <input type="file" id="file-gallery" accept="image/*" onchange="onFileSelected(event)" style="display:none">
-        <div style="font-size:12px;color:var(--text-sub);text-align:center">JPG・PNG・HEIC対応</div>
+        <input type="file" id="file-pdf" accept="application/pdf" onchange="onPdfSelected(event)" style="display:none">
+        <div style="font-size:11px;color:var(--text-sub);text-align:center;margin-top:8px">JPG・PNG・HEIC・PDF対応</div>
       </div>
 
       <div id="img-preview-wrap"><img id="img-preview" src="" alt="プレビュー"></div>
+      <div id="pdf-preview-wrap" style="display:none" class="card" style="text-align:center">
+        <div style="display:flex;align-items:center;gap:12px;padding:4px 0">
+          <div style="width:44px;height:44px;background:var(--red-light);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="ti ti-file-type-pdf" style="font-size:24px;color:var(--red)"></i>
+          </div>
+          <div style="flex:1;text-align:left">
+            <div style="font-size:14px;font-weight:600" id="pdf-filename">ファイル名.pdf</div>
+            <div style="font-size:12px;color:var(--text-sub)" id="pdf-filesize"></div>
+          </div>
+        </div>
+      </div>
       <div id="analyze-btn-wrap" style="display:none">
         <button class="btn-primary" onclick="startAnalysis()"><i class="ti ti-sparkles"></i> AIで解析する</button>
-        <button class="btn-outline" onclick="clearImage()"><i class="ti ti-x"></i> 写真をやり直す</button>
+        <button class="btn-outline" onclick="clearImage()"><i class="ti ti-x"></i> やり直す</button>
       </div>
       <div id="analyzing-wrap" style="display:none" class="card analyzing-wrap">
         <div class="spinner"></div>
@@ -557,11 +572,34 @@ function clearAll() {
 }
 
 // ── Camera ──
+function onPdfSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  selectedFile = file;
+  selectedMime = 'application/pdf';
+  const reader = new FileReader();
+  reader.onload = ev => {
+    selectedImageBase64 = ev.target.result.split(',')[1];
+    document.getElementById('pdf-filename').textContent = file.name;
+    document.getElementById('pdf-filesize').textContent = (file.size / 1024).toFixed(0) + ' KB';
+    document.getElementById('pdf-preview-wrap').style.display = 'block';
+    document.getElementById('img-preview-wrap').style.display = 'none';
+    document.getElementById('analyze-btn-wrap').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      currentLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    }, () => { currentLocation = null; });
+  }
+}
+
 function onFileSelected(e) {
   const file = e.target.files[0];
   if (!file) return;
   selectedFile = file;
   selectedMime = file.type || 'image/jpeg';
+  document.getElementById('pdf-preview-wrap').style.display = 'none';
   const reader = new FileReader();
   reader.onload = ev => {
     selectedImageBase64 = ev.target.result.split(',')[1];
@@ -578,9 +616,13 @@ function onFileSelected(e) {
 }
 function clearImage() {
   selectedFile = selectedImageBase64 = null;
+  selectedMime = 'image/jpeg';
   document.getElementById('img-preview-wrap').style.display='none';
+  document.getElementById('pdf-preview-wrap').style.display='none';
   document.getElementById('analyze-btn-wrap').style.display='none';
-  document.getElementById('file-input').value='';
+  document.getElementById('file-camera').value='';
+  document.getElementById('file-gallery').value='';
+  document.getElementById('file-pdf').value='';
 }
 
 // ── AI Analysis (Gemini) ──
