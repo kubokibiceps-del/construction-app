@@ -218,14 +218,20 @@
       <div><div class="topbar-title">撮影・解析</div><div class="topbar-sub">施工体系図をAIで自動読み取り</div></div>
     </div>
     <div class="scroll">
-      <div class="card cam-hero">
-        <div class="cam-icon"><i class="ti ti-camera"></i></div>
-        <div class="cam-title">施工体系図を撮影</div>
-        <div class="cam-sub">現場の看板を撮影してください。<br>AIが業者情報を自動で読み取ります。</div>
-        <button class="btn-primary" onclick="document.getElementById('file-input').click()">
-          <i class="ti ti-camera"></i> カメラで撮影 / 写真を選ぶ
-        </button>
-        <input type="file" id="file-input" accept="image/*" capture="environment" onchange="onFileSelected(event)">
+      <!-- 方法①：撮影・画像選択 -->
+      <div class="card">
+        <div class="card-title"><i class="ti ti-camera"></i> 方法① 写真から解析</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <button class="btn-primary" style="font-size:13px;padding:12px 8px" onclick="document.getElementById('file-camera').click()">
+            <i class="ti ti-camera"></i><br>カメラで撮影
+          </button>
+          <button class="btn-outline" style="font-size:13px;padding:12px 8px;margin-top:0;border-color:var(--blue);color:var(--blue)" onclick="document.getElementById('file-gallery').click()">
+            <i class="ti ti-photo"></i><br>過去の写真を選ぶ
+          </button>
+        </div>
+        <input type="file" id="file-camera" accept="image/*" capture="environment" onchange="onFileSelected(event)" style="display:none">
+        <input type="file" id="file-gallery" accept="image/*" onchange="onFileSelected(event)" style="display:none">
+        <div style="font-size:12px;color:var(--text-sub);text-align:center">JPG・PNG・HEIC対応</div>
       </div>
 
       <div id="img-preview-wrap"><img id="img-preview" src="" alt="プレビュー"></div>
@@ -238,6 +244,26 @@
         <div class="analyzing-label">AIが解析しています...</div>
         <div class="analyzing-step" id="analyzing-step-text">施工体系図を読み取り中</div>
         <div class="progress-bar"><div class="progress-fill" id="prog"></div></div>
+      </div>
+
+      <!-- 方法②：URL入力 -->
+      <div class="card" id="url-section">
+        <div class="card-title"><i class="ti ti-qrcode"></i> 方法② QRコード・URLから解析</div>
+        <div class="banner banner-info" style="margin-bottom:12px">
+          <i class="ti ti-info-circle"></i>
+          <div><b>QRコードで開いたページに対応</b><span>施工体系図のWebページURLを貼り付けるとAIが自動解析します。</span></div>
+        </div>
+        <div style="font-size:12px;color:var(--text-sub);margin-bottom:6px;font-weight:500">URLを貼り付けて解析ボタンを押す</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="url" id="url-input" placeholder="https://..." style="flex:1;border:0.5px solid var(--gray-border-md);border-radius:var(--radius-sm);padding:10px 12px;font-size:14px;outline:none;color:var(--text-main);background:#fff">
+          <button class="btn-primary" style="width:auto;padding:10px 16px;flex-shrink:0;font-size:13px" onclick="startUrlAnalysis()"><i class="ti ti-world"></i> 解析</button>
+        </div>
+        <div id="url-analyzing-wrap" style="display:none;text-align:center;padding:20px 0">
+          <div class="spinner" style="width:36px;height:36px;margin:0 auto 12px"></div>
+          <div style="font-size:14px;font-weight:600">ページを取得中...</div>
+          <div style="font-size:12px;color:var(--text-sub);margin-top:4px" id="url-step-text">URLにアクセス中</div>
+          <div class="progress-bar" style="margin-top:12px"><div class="progress-fill" id="url-prog"></div></div>
+        </div>
       </div>
 
       <!-- 解像度ガイド -->
@@ -675,6 +701,128 @@ async function startAnalysis() {
     clearInterval(iv);
     document.getElementById('analyzing-wrap').style.display='none';
     document.getElementById('analyze-btn-wrap').style.display='block';
+    toast('エラー: '+e.message, 'ti-alert-circle');
+    console.error(e);
+  }
+}
+
+// ── URL Analysis ──
+async function startUrlAnalysis() {
+  const apiKey = localStorage.getItem('gemini_api_key');
+  if (!apiKey) { toast('設定でGemini APIキーを入力してください','ti-key'); setTimeout(()=>goTo('settings'),1200); return; }
+
+  const url = document.getElementById('url-input').value.trim();
+  if (!url || !url.startsWith('http')) { toast('正しいURLを入力してください','ti-alert-circle'); return; }
+
+  document.getElementById('url-input').disabled = true;
+  document.getElementById('url-analyzing-wrap').style.display = 'block';
+  const stepEl = document.getElementById('url-step-text');
+  const prog = document.getElementById('url-prog');
+
+  const steps = ['URLにアクセス中...','ページを読み取り中...','AIが解析中...','データを整理中...'];
+  let si = 0;
+  const iv = setInterval(() => {
+    if (si < steps.length) { stepEl.textContent=steps[si]; prog.style.width=((si+1)/steps.length*75)+'%'; si++; }
+  }, 1500);
+
+  try {
+    // Use allorigins proxy to fetch the page
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const fetchRes = await fetch(proxyUrl);
+    if (!fetchRes.ok) throw new Error('ページの取得に失敗しました');
+    const fetchData = await fetchRes.json();
+    const html = fetchData.contents || '';
+
+    // Extract text from HTML
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    // Remove scripts, styles, nav elements
+    doc.querySelectorAll('script,style,nav,footer,header').forEach(el => el.remove());
+    const text = doc.body?.innerText || doc.body?.textContent || '';
+    const cleanText = text.replace(/\s+/g,' ').trim().slice(0, 8000);
+
+    if (cleanText.length < 50) throw new Error('ページからテキストを取得できませんでした。スクリーンショットでお試しください。');
+
+    const prompt = `以下は建設現場の施工体系図ページから取得したテキストです。この情報から業者情報を読み取り、必ずJSON形式のみで返してください（説明文・コードブロック不要）。
+
+テキスト:
+${cleanText}
+
+{
+  "name": "現場名",
+  "client": "元請会社名",
+  "period": "工期",
+  "address": "現場住所",
+  "primary": [
+    { "trade": "工種名", "company": "業者名", "formal": "正式名称", "person": "担当者名", "address": "住所" }
+  ],
+  "secondary": [
+    { "trade": "工種名", "company": "業者名", "formal": "正式名称", "person": "担当者名", "address": "住所" }
+  ]
+}
+
+JSONのみ返すこと。`;
+
+    const isNewKey = apiKey.startsWith('AQ.');
+    const apiUrl = isNewKey
+      ? 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent'
+      : `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+    const reqHeaders = {'Content-Type': 'application/json'};
+    if (isNewKey) reqHeaders['x-goog-api-key'] = apiKey;
+
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      headers: reqHeaders,
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
+      })
+    });
+
+    clearInterval(iv);
+    prog.style.width = '100%';
+
+    if (!res.ok) {
+      const err = await res.json().catch(()=>({}));
+      throw new Error(err.error?.message || `APIエラー (${res.status})`);
+    }
+
+    const data = await res.json();
+    let responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    responseText = responseText.replace(/```json
+?/g,'').replace(/```
+?/g,'').trim();
+
+    let parsed;
+    try { parsed = JSON.parse(responseText); }
+    catch(e) {
+      const m = responseText.match(/\{[\s\S]*\}/);
+      if (m) parsed = JSON.parse(m[0]);
+      else throw new Error('AIの返答を解析できませんでした');
+    }
+
+    const today = new Date();
+    const newSite = {
+      id: Date.now().toString(),
+      date: `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`,
+      sourceUrl: url,
+      lat: currentLocation?.lat || null,
+      lng: currentLocation?.lng || null,
+      ...parsed,
+    };
+    sites.push(newSite);
+    save();
+
+    document.getElementById('url-analyzing-wrap').style.display='none';
+    document.getElementById('url-input').value='';
+    document.getElementById('url-input').disabled=false;
+    toast('解析完了！現場を登録しました');
+    setTimeout(()=>goTo('list'), 800);
+
+  } catch(e) {
+    clearInterval(iv);
+    document.getElementById('url-analyzing-wrap').style.display='none';
+    document.getElementById('url-input').disabled=false;
     toast('エラー: '+e.message, 'ti-alert-circle');
     console.error(e);
   }
