@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="施工体系図">
+<meta name="theme-color" content="#ffffff">
+<title>施工体系図アプリ</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+  :root {
+    --blue: #1A6BBF;
+    --blue-light: #E8F2FB;
+    --blue-dark: #0D4A8A;
+    --green: #2E7D32;
+    --green-light: #E8F5E9;
+    --red: #D32F2F;
+    --red-light: #FFEBEE;
+    --amber: #E65100;
+    --amber-light: #FFF3E0;
+    --gray-bg: #F4F4F2;
+    --gray-card: #FFFFFF;
+    --gray-border: rgba(0,0,0,0.09);
+    --gray-border-md: rgba(0,0,0,0.17);
+    --text-main: #1C1C1E;
+    --text-sub: #636366;
+    --text-hint: #AEAEB2;
+    --radius-sm: 10px;
+    --radius-md: 14px;
+    --radius-lg: 18px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 44px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
+  body { font-family: -apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif; background: var(--gray-bg); color: var(--text-main); }
+
+  #app { display: flex; flex-direction: column; height: 100%; }
+  .screen { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+  .screen.active { display: flex; }
+  .scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px 14px 20px; }
+
+  /* Top bar */
+  .topbar { background: #fff; padding: calc(var(--safe-top) + 10px) 16px 14px; border-bottom: 0.5px solid var(--gray-border); display: flex; align-items: flex-end; justify-content: space-between; }
+  .topbar-title { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+  .topbar-sub { font-size: 12px; color: var(--text-sub); margin-top: 2px; }
+  .topbar-btn { background: var(--blue-light); border: none; color: var(--blue); border-radius: var(--radius-sm); padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+
+  /* Back bar */
+  .back-bar { background: #fff; padding: calc(var(--safe-top) + 10px) 16px 14px; border-bottom: 0.5px solid var(--gray-border); display: flex; align-items: flex-end; gap: 8px; }
+  .back-btn { background: none; border: none; color: var(--blue); font-size: 15px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 3px; padding: 0; flex-shrink: 0; }
+  .back-title { font-size: 17px; font-weight: 700; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Bottom nav */
+  .bottom-nav { background: #fff; border-top: 0.5px solid var(--gray-border); display: flex; padding-bottom: var(--safe-bottom); }
+  .nav-btn { flex: 1; background: none; border: none; padding: 8px 4px 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; color: var(--text-hint); cursor: pointer; }
+  .nav-btn i { font-size: 23px; }
+  .nav-btn.active { color: var(--blue); }
+
+  /* Cards */
+  .card { background: #fff; border-radius: var(--radius-md); border: 0.5px solid var(--gray-border); padding: 14px 16px; margin-bottom: 10px; }
+  .card-title { font-size: 12px; font-weight: 600; color: var(--text-sub); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; letter-spacing: 0.2px; }
+  .card-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 7px 0; border-bottom: 0.5px solid rgba(0,0,0,0.055); }
+  .card-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .card-label { font-size: 12px; color: var(--text-sub); flex-shrink: 0; margin-right: 10px; white-space: nowrap; }
+  .card-value { font-size: 13px; font-weight: 500; text-align: right; }
+
+  /* Site list */
+  .site-item { background: #fff; border-radius: var(--radius-md); border: 0.5px solid var(--gray-border); padding: 13px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
+  .site-item:active { opacity: 0.7; }
+  .site-icon { width: 44px; height: 44px; border-radius: var(--radius-sm); background: var(--blue-light); display: flex; align-items: center; justify-content: center; color: var(--blue); font-size: 22px; flex-shrink: 0; }
+  .site-info { flex: 1; min-width: 0; }
+  .site-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .site-meta { font-size: 11px; color: var(--text-sub); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .site-right { text-align: right; flex-shrink: 0; }
+  .site-date { font-size: 11px; color: var(--text-hint); }
+  .section-label { font-size: 11px; font-weight: 600; color: var(--text-sub); letter-spacing: 0.5px; margin: 4px 2px 8px; text-transform: uppercase; }
+
+  /* Search */
+  .search-box { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.06); border-radius: var(--radius-sm); padding: 9px 12px; margin-bottom: 14px; }
+  .search-box i { font-size: 16px; color: var(--text-hint); }
+  .search-box input { background: none; border: none; outline: none; font-size: 14px; flex: 1; color: var(--text-main); }
+
+  /* Badges */
+  .badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; }
+  .badge-1 { background: var(--blue-light); color: var(--blue-dark); }
+  .badge-2 { background: var(--green-light); color: var(--green); }
+
+  /* Contractor table */
+  .ctable { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .ctable th { font-size: 11px; color: var(--text-sub); font-weight: 600; padding: 4px 6px 8px; text-align: left; border-bottom: 0.5px solid var(--gray-border-md); }
+  .ctable td { padding: 8px 6px; border-bottom: 0.5px solid rgba(0,0,0,0.055); vertical-align: top; }
+  .ctable tr:last-child td { border-bottom: none; }
+
+  /* Copy */
+  .check-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 0.5px solid rgba(0,0,0,0.055); }
+  .check-item:last-child { border-bottom: none; }
+  .check-item input[type=checkbox] { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--blue); cursor: pointer; }
+  .check-label { flex: 1; cursor: pointer; }
+  .check-company { font-size: 13px; font-weight: 600; }
+  .check-detail { font-size: 11px; color: var(--text-sub); margin-top: 2px; }
+  .copy-preview { background: rgba(0,0,0,0.04); border-radius: var(--radius-sm); padding: 13px 14px; font-size: 12px; line-height: 2; color: var(--text-sub); font-family: 'Courier New',monospace; white-space: pre-wrap; margin: 12px 0; min-height: 64px; }
+
+  /* Buttons */
+  .btn-primary { width: 100%; background: var(--blue); color: #fff; border: none; border-radius: var(--radius-sm); padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-primary:active { background: var(--blue-dark); }
+  .btn-primary.success { background: var(--green); }
+  .btn-outline { width: 100%; background: none; border: 0.5px solid var(--gray-border-md); border-radius: var(--radius-sm); padding: 12px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--text-main); margin-top: 8px; }
+  .btn-danger { color: var(--red); }
+
+  /* Camera screen */
+  .cam-hero { text-align: center; padding: 28px 20px 24px; }
+  .cam-icon { width: 80px; height: 80px; border-radius: 50%; background: var(--blue-light); display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; color: var(--blue); font-size: 36px; }
+  .cam-title { font-size: 19px; font-weight: 700; margin-bottom: 8px; }
+  .cam-sub { font-size: 13px; color: var(--text-sub); line-height: 1.8; margin-bottom: 24px; }
+  #file-input { display: none; }
+  #img-preview-wrap { margin: 0 0 10px; display: none; }
+  #img-preview { width: 100%; max-height: 240px; object-fit: cover; border-radius: var(--radius-md); border: 0.5px solid var(--gray-border); }
+
+  /* Analyzing */
+  .analyzing-wrap { text-align: center; padding: 36px 20px; }
+  .spinner { width: 48px; height: 48px; border: 3px solid var(--blue-light); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.75s linear infinite; margin: 0 auto 18px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .analyzing-label { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+  .analyzing-step { font-size: 13px; color: var(--text-sub); }
+  .progress-bar { height: 4px; background: rgba(0,0,0,0.08); border-radius: 2px; margin: 16px 0 0; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--blue); border-radius: 2px; width: 0; transition: width 0.6s ease; }
+
+  /* Map */
+  .map-mock { width: 100%; height: 180px; background: #dce9f5; position: relative; overflow: hidden; border-radius: var(--radius-md) var(--radius-md) 0 0; }
+  .map-pin-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-100%); font-size: 36px; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2)); }
+  .map-info-block { padding: 12px 16px; }
+  .map-address { font-size: 14px; font-weight: 600; }
+  .map-sub-text { font-size: 12px; color: var(--text-sub); margin-top: 2px; }
+  .btn-maps { margin-top: 10px; width: 100%; background: none; border: 0.5px solid var(--gray-border-md); border-radius: var(--radius-sm); padding: 10px; font-size: 13px; cursor: pointer; color: var(--blue); display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; }
+
+  /* Settings */
+  .setting-input { width: 100%; border: 0.5px solid var(--gray-border-md); border-radius: var(--radius-sm); padding: 11px 12px; font-size: 13px; font-family: 'Courier New',monospace; letter-spacing: 0.5px; outline: none; color: var(--text-main); background: #fff; margin-top: 8px; }
+  .setting-input:focus { border-color: var(--blue); }
+
+  /* Info banners */
+  .banner { border-radius: var(--radius-sm); padding: 13px 14px; margin-bottom: 12px; display: flex; gap: 10px; align-items: flex-start; }
+  .banner i { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+  .banner b { display: block; font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .banner span { font-size: 12px; line-height: 1.6; }
+  .banner-warn { background: var(--amber-light); border: 0.5px solid rgba(230,81,0,0.25); }
+  .banner-warn i { color: var(--amber); }
+  .banner-ok { background: var(--green-light); border: 0.5px solid rgba(46,125,50,0.25); }
+  .banner-ok i { color: var(--green); }
+  .banner-info { background: var(--blue-light); border: 0.5px solid rgba(26,107,191,0.25); }
+  .banner-info i { color: var(--blue); }
+
+  /* Steps */
+  .steps { display: flex; flex-direction: column; gap: 0; }
+  .step { display: flex; gap: 12px; padding: 11px 0; border-bottom: 0.5px solid rgba(0,0,0,0.06); }
+  .step:last-child { border-bottom: none; }
+  .step-num { width: 26px; height: 26px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-text b { font-size: 13px; font-weight: 600; display: block; }
+  .step-text span { font-size: 12px; color: var(--text-sub); line-height: 1.6; }
+  .step-link { font-size: 12px; color: var(--blue); text-decoration: none; display: inline-flex; align-items: center; gap: 3px; margin-top: 3px; font-weight: 600; }
+
+  /* Resolution tip */
+  .tip-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 4px; }
+  .tip-box { border-radius: var(--radius-sm); padding: 10px 8px; text-align: center; }
+  .tip-box i { font-size: 22px; display: block; margin-bottom: 5px; }
+  .tip-box b { font-size: 11px; font-weight: 700; display: block; }
+  .tip-box span { font-size: 10px; color: var(--text-sub); display: block; margin-top: 2px; line-height: 1.4; }
+  .tip-ok { background: var(--green-light); }
+  .tip-ok i, .tip-ok b { color: var(--green); }
+  .tip-warn { background: var(--amber-light); }
+  .tip-warn i, .tip-warn b { color: var(--amber); }
+  .tip-ng { background: var(--red-light); }
+  .tip-ng i, .tip-ng b { color: var(--red); }
+
+  /* Toast */
+  #toast { position: fixed; bottom: calc(72px + var(--safe-bottom)); left: 50%; transform: translateX(-50%); background: #1C1C1E; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity 0.25s; pointer-events: none; white-space: nowrap; z-index: 999; display: flex; align-items: center; gap: 7px; }
+  #toast.show { opacity: 1; }
+
+  .empty-state { text-align: center; padding: 56px 20px; color: var(--text-hint); }
+  .empty-state i { font-size: 52px; display: block; margin-bottom: 14px; }
+  .empty-state p { font-size: 14px; line-height: 1.7; }
+  .empty-state button { margin-top: 20px; display: inline-flex; align-items: center; gap: 6px; background: var(--blue); color: #fff; border: none; border-radius: var(--radius-sm); padding: 12px 22px; font-size: 14px; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- LIST -->
+  <div class="screen active" id="screen-list">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">現場一覧</div>
+        <div class="topbar-sub" id="list-count">0件</div>
+      </div>
+      <button class="topbar-btn" onclick="goTo('camera')"><i class="ti ti-plus"></i>新規</button>
+    </div>
+    <div class="scroll">
+      <div class="search-box"><i class="ti ti-search"></i><input type="text" placeholder="現場名・業者名で検索" id="search-input" oninput="renderList()"></div>
+      <div class="section-label">登録済み現場</div>
+      <div id="site-list"></div>
+    </div>
+  </div>
+
+  <!-- DETAIL -->
+  <div class="screen" id="screen-detail">
+    <div class="back-bar">
+      <button class="back-btn" onclick="goBack()"><i class="ti ti-chevron-left"></i>戻る</button>
+      <div class="back-title" id="detail-title"></div>
+    </div>
+    <div class="scroll" id="detail-scroll"></div>
+  </div>
+
+  <!-- CAMERA -->
+  <div class="screen" id="screen-camera">
+    <div class="topbar">
+      <div><div class="topbar-title">撮影・解析</div><div class="topbar-sub">施工体系図をAIで自動読み取り</div></div>
+    </div>
+    <div class="scroll">
+      <div class="card cam-hero">
+        <div class="cam-icon"><i class="ti ti-camera"></i></div>
+        <div class="cam-title">施工体系図を撮影</div>
+        <div class="cam-sub">現場の看板を撮影してください。<br>AIが業者情報を自動で読み取ります。</div>
+        <button class="btn-primary" onclick="document.getElementById('file-input').click()">
+          <i class="ti ti-camera"></i> カメラで撮影 / 写真を選ぶ
+        </button>
+        <input type="file" id="file-input" accept="image/*" capture="environment" onchange="onFileSelected(event)">
+      </div>
+
+      <div id="img-preview-wrap"><img id="img-preview" src="" alt="プレビュー"></div>
+      <div id="analyze-btn-wrap" style="display:none">
+        <button class="btn-primary" onclick="startAnalysis()"><i class="ti ti-sparkles"></i> AIで解析する</button>
+        <button class="btn-outline" onclick="clearImage()"><i class="ti ti-x"></i> 写真をやり直す</button>
+      </div>
+      <div id="analyzing-wrap" style="display:none" class="card analyzing-wrap">
+        <div class="spinner"></div>
+        <div class="analyzing-label">AIが解析しています...</div>
+        <div class="analyzing-step" id="analyzing-step-text">施工体系図を読み取り中</div>
+        <div class="progress-bar"><div class="progress-fill" id="prog"></div></div>
+      </div>
+
+      <!-- 解像度ガイド -->
+      <div class="card">
+        <div class="card-title"><i class="ti ti-photo"></i> 撮影のコツ・解像度について</div>
+        <div class="banner banner-info" style="margin-bottom:10px">
+          <i class="ti ti-info-circle"></i>
+          <div><b>多少荒くても読み取れます</b><span>GeminiのAIは低解像度・多少ぼやけた画像でも文脈から文字を推測して補完します。ただし極端に暗い・ピンボケの場合は精度が下がります。</span></div>
+        </div>
+        <div class="tip-grid">
+          <div class="tip-box tip-ok"><i class="ti ti-check"></i><b>OK</b><span>明るい・正面から・文字が見える</span></div>
+          <div class="tip-box tip-warn"><i class="ti ti-alert-triangle"></i><b>△ やや注意</b><span>多少暗い・斜め・圧縮画像</span></div>
+          <div class="tip-box tip-ng"><i class="ti ti-x"></i><b>NG</b><span>極端なピンボケ・逆光・夜間</span></div>
+        </div>
+        <div style="font-size:12px;color:var(--text-sub);margin-top:10px;line-height:1.7">
+          ✅ 正面から看板全体が入るよう撮影<br>
+          ✅ フラッシュより自然光が◎<br>
+          ✅ 読み取れない場合は近づいて再撮影
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="screen" id="screen-map">
+    <div class="topbar"><div><div class="topbar-title">現場マップ</div><div class="topbar-sub">撮影場所の一覧</div></div></div>
+    <div class="scroll" id="map-list"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="screen" id="screen-settings">
+    <div class="topbar"><div><div class="topbar-title">設定</div><div class="topbar-sub">Gemini APIキー・アプリ情報</div></div></div>
+    <div class="scroll"><div id="settings-content"></div></div>
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="nav-list" onclick="goTo('list')"><i class="ti ti-list"></i>一覧</button>
+    <button class="nav-btn" id="nav-camera" onclick="goTo('camera')"><i class="ti ti-camera"></i>撮影</button>
+    <button class="nav-btn" id="nav-map" onclick="goTo('map')"><i class="ti ti-map-pin"></i>地図</button>
+    <button class="nav-btn" id="nav-settings" onclick="goTo('settings')"><i class="ti ti-settings"></i>設定</button>
+  </nav>
+</div>
+
+<div id="toast"><i class="ti ti-check"></i><span id="toast-msg">完了</span></div>
+
+<script>
+let sites = JSON.parse(localStorage.getItem('sites_v2') || '[]');
+let currentSiteId = null;
+let selectedFile = null;
+let selectedImageBase64 = null;
+let selectedMime = 'image/jpeg';
+let currentLocation = null;
+
+// ── Nav ──
+function goTo(screen) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + screen).classList.add('active');
+  document.getElementById('nav-' + screen)?.classList.add('active');
+  if (screen === 'list') renderList();
+  if (screen === 'map') renderMap();
+  if (screen === 'settings') renderSettings();
+}
+function goBack() { currentSiteId = null; goTo('list'); }
+function goToDetail(id) {
+  currentSiteId = id;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-detail').classList.add('active');
+  renderDetail();
+}
+function save() { localStorage.setItem('sites_v2', JSON.stringify(sites)); }
+function toast(msg, icon = 'ti-check') {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.querySelector('i').className = 'ti ' + icon;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2300);
+}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function openLink(url) { window.open(url,'_blank'); }
+
+// ── List ──
+function renderList() {
+  const q = (document.getElementById('search-input')?.value||'').toLowerCase();
+  const filtered = q ? sites.filter(s =>
+    [s.name,s.client,...(s.primary||[]).flatMap(c=>[c.company,c.person]),...(s.secondary||[]).flatMap(c=>[c.company,c.person])].some(v=>v?.toLowerCase().includes(q))
+  ) : sites;
+  document.getElementById('list-count').textContent = `${sites.length}件のデータ`;
+  const el = document.getElementById('site-list');
+  if (filtered.length === 0) {
+    el.innerHTML = `<div class="empty-state"><i class="ti ti-building-off"></i><p>${q?'検索結果がありません':'まだ現場が登録されていません\n撮影ボタンから追加してください'}</p>${!q?`<button onclick="goTo('camera')"><i class="ti ti-camera"></i>撮影・解析する</button>`:''}</div>`;
+    return;
+  }
+  el.innerHTML = filtered.slice().reverse().map(s => `
+    <div class="site-item" onclick="goToDetail('${s.id}')">
+      <div class="site-icon"><i class="ti ti-building-skyscraper"></i></div>
+      <div class="site-info">
+        <div class="site-name">${esc(s.name||'（現場名不明）')}</div>
+        <div class="site-meta"><i class="ti ti-map-pin" style="font-size:10px"></i> ${esc(s.address||s.client||'—')}</div>
+      </div>
+      <div class="site-right">
+        <div class="site-date">${esc(s.date||'')}</div>
+        <i class="ti ti-chevron-right" style="color:#ccc;font-size:16px;margin-top:4px;display:block"></i>
+      </div>
+    </div>`).join('');
+}
+
+// ── Detail ──
+function renderDetail() {
+  const s = sites.find(x => x.id === currentSiteId);
+  if (!s) return;
+  document.getElementById('detail-title').textContent = s.name || '詳細';
+  const allC = [
+    ...(s.primary||[]).map((c,i)=>({...c,tier:1,key:`p${i}`})),
+    ...(s.secondary||[]).map((c,i)=>({...c,tier:2,key:`s${i}`}))
+  ];
+  const mapLink = s.lat && s.lng
+    ? `https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address||'')}`;
+
+  document.getElementById('detail-scroll').innerHTML = `
+    <div class="card">
+      <div class="card-title"><i class="ti ti-file-description"></i> 基本情報</div>
+      <div class="card-row"><span class="card-label">現場名</span><span class="card-value">${esc(s.name||'—')}</span></div>
+      <div class="card-row"><span class="card-label">元請名</span><span class="card-value">${esc(s.client||'—')}</span></div>
+      <div class="card-row"><span class="card-label">工期</span><span class="card-value">${esc(s.period||'—')}</span></div>
+      <div class="card-row"><span class="card-label">撮影日</span><span class="card-value">${esc(s.date||'—')}</span></div>
+      <div class="card-row"><span class="card-label">住所</span><span class="card-value" style="font-size:12px">${esc(s.address||'—')}</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-users"></i> 施工体系（業者一覧）</div>
+      ${allC.length===0 ? '<p style="font-size:13px;color:var(--text-hint);text-align:center;padding:10px">業者情報なし</p>' : `
+      <table class="ctable">
+        <thead><tr><th>区分</th><th>工種</th><th>業者名</th><th>担当者</th></tr></thead>
+        <tbody>${allC.map(c=>`
+          <tr>
+            <td><span class="badge badge-${c.tier}">${c.tier}次</span></td>
+            <td>${esc(c.trade||'—')}</td>
+            <td style="font-size:11px">${esc(c.company||'—')}</td>
+            <td style="font-size:11px">${esc(c.person||'—')}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`}
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="map-mock">
+        <svg width="100%" height="100%" viewBox="0 0 390 180" xmlns="http://www.w3.org/2000/svg">
+          <rect width="390" height="180" fill="#dce9f5"/>
+          ${[...Array(8)].map((_,i)=>`<line x1="${i*56}" y1="0" x2="${i*56}" y2="180" stroke="#c5d8ed" stroke-width="1"/>`).join('')}
+          ${[...Array(5)].map((_,i)=>`<line x1="0" y1="${i*45}" x2="390" y2="${i*45}" stroke="#c5d8ed" stroke-width="1"/>`).join('')}
+          <rect x="40" y="50" width="80" height="40" rx="3" fill="#b8ccdf"/>
+          <rect x="160" y="35" width="60" height="55" rx="3" fill="#b8ccdf"/>
+          <rect x="250" y="65" width="90" height="30" rx="3" fill="#b8ccdf"/>
+          <rect x="100" y="115" width="120" height="30" rx="3" fill="#b8ccdf"/>
+          <line x1="0" y1="95" x2="390" y2="95" stroke="#a0b8cc" stroke-width="3"/>
+          <line x1="155" y1="0" x2="155" y2="180" stroke="#a0b8cc" stroke-width="2"/>
+        </svg>
+        <div class="map-pin-icon">📍</div>
+      </div>
+      <div class="map-info-block">
+        <div class="map-address">${esc(s.address||'住所不明')}</div>
+        <div class="map-sub-text">撮影日時: ${esc(s.date||'—')}</div>
+        <button class="btn-maps" onclick="openLink('${mapLink}')"><i class="ti ti-external-link"></i> Googleマップで開く</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-copy"></i> 業者情報コピー（①②③形式）</div>
+      ${allC.length===0 ? '<p style="font-size:13px;color:var(--text-hint);text-align:center;padding:8px">業者情報がありません</p>' : `
+        <div>${allC.map(c=>`
+          <div class="check-item">
+            <input type="checkbox" id="chk_${c.key}" onchange="updatePreview()">
+            <label for="chk_${c.key}" class="check-label">
+              <div class="check-company"><span class="badge badge-${c.tier}" style="margin-right:5px">${c.tier}次</span>${esc(c.trade||'')} — ${esc(c.company||'')}</div>
+              <div class="check-detail">${esc(c.person||'')} ／ ${esc(c.address||c.company||'')}</div>
+            </label>
+          </div>`).join('')}
+        </div>
+        <div class="copy-preview" id="copy-preview-text">業者を選択するとここに表示されます</div>
+        <button class="btn-primary" id="exec-copy-btn" onclick="execCopy()"><i class="ti ti-copy"></i> クリップボードにコピー</button>`}
+      <button class="btn-outline btn-danger" onclick="deleteSite('${s.id}')"><i class="ti ti-trash"></i> この現場を削除</button>
+    </div>`;
+}
+
+function updatePreview() {
+  const s = sites.find(x => x.id === currentSiteId);
+  if (!s) return;
+  const allC = [...(s.primary||[]).map((c,i)=>({...c,tier:1,key:`p${i}`})),...(s.secondary||[]).map((c,i)=>({...c,tier:2,key:`s${i}`}))];
+  const sel = allC.filter(c => document.getElementById('chk_'+c.key)?.checked);
+  const el = document.getElementById('copy-preview-text');
+  if (!el) return;
+  if (sel.length===0) { el.textContent='業者を選択するとここに表示されます'; return; }
+  el.textContent = sel.map(c=>`①業者名（正式名称）\n${c.formal||c.company||'—'}\n②社長名\n${c.person||'—'}\n③住所\n${c.address||'—'}`).join('\n\n───────────\n\n');
+}
+
+function execCopy() {
+  const text = document.getElementById('copy-preview-text')?.textContent;
+  if (!text || text==='業者を選択するとここに表示されます') { toast('業者を選択してください','ti-alert-circle'); return; }
+  navigator.clipboard?.writeText(text).catch(()=>{});
+  const btn = document.getElementById('exec-copy-btn');
+  if (btn) { btn.classList.add('success'); btn.innerHTML='<i class="ti ti-check"></i> コピーしました！'; }
+  toast('クリップボードにコピーしました');
+  setTimeout(()=>{ if(btn){btn.classList.remove('success');btn.innerHTML='<i class="ti ti-copy"></i> クリップボードにコピー';} },2500);
+}
+
+function deleteSite(id) {
+  if (!confirm('この現場データを削除しますか？')) return;
+  sites = sites.filter(s => s.id !== id);
+  save(); goTo('list'); toast('削除しました','ti-trash');
+}
+
+// ── Map ──
+function renderMap() {
+  const el = document.getElementById('map-list');
+  if (sites.length===0) { el.innerHTML=`<div class="empty-state"><i class="ti ti-map-off"></i><p>現場データがありません</p></div>`; return; }
+  el.innerHTML = sites.slice().reverse().map(s => {
+    const link = s.lat && s.lng
+      ? `https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address||'')}`;
+    return `<div class="site-item" onclick="goToDetail('${s.id}')">
+      <div style="width:44px;height:44px;border-radius:50%;background:var(--red-light);display:flex;align-items:center;justify-content:center;color:var(--red);font-size:22px;flex-shrink:0"><i class="ti ti-map-pin"></i></div>
+      <div class="site-info"><div class="site-name">${esc(s.name||'（現場名不明）')}</div><div class="site-meta">${esc(s.address||'住所不明')}</div></div>
+      <button onclick="event.stopPropagation();openLink('${link}')" style="background:none;border:0.5px solid var(--gray-border-md);border-radius:var(--radius-sm);padding:7px 10px;font-size:11px;color:var(--blue);cursor:pointer;white-space:nowrap;font-weight:600"><i class="ti ti-external-link" style="font-size:12px"></i> 地図</button>
+    </div>`;
+  }).join('');
+}
+
+// ── Settings ──
+function renderSettings() {
+  const key = localStorage.getItem('gemini_api_key') || '';
+  const hasKey = key.length > 10;
+  document.getElementById('settings-content').innerHTML = `
+    ${!hasKey ? `
+    <div class="banner banner-warn"><i class="ti ti-alert-circle"></i>
+      <div><b>APIキーが未設定です</b><span>下記の手順で無料取得してください</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-list-numbers"></i> Gemini APIキー取得手順（無料・5分）</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-text"><b>Google AI Studioを開く</b><span>下記URLにアクセス（Googleアカウントでログイン）</span><br><a class="step-link" href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey <i class="ti ti-external-link" style="font-size:11px"></i></a></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text"><b>「APIキーを作成」をクリック</b><span>「Create API key」ボタンを押す</span></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text"><b>キーをコピー</b><span>詳細画面下の「キーをコピー」ボタンを押す</span></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-text"><b>下の欄に貼り付けて保存</b><span>クレジットカード不要・完全無料</span></div></div>
+      </div>
+    </div>` : `
+    <div class="banner banner-ok"><i class="ti ti-circle-check"></i>
+      <div><b style="color:var(--green)">APIキーが設定済みです</b><span>Gemini AIで無料解析できます（1日1,500枚まで）</span></div>
+    </div>`}
+    <div class="card">
+      <div class="card-title"><i class="ti ti-key"></i> Gemini APIキー</div>
+      <input type="password" class="setting-input" id="api-key-input" placeholder="AQ.Ab8... または AIzaSy..." value="${esc(key)}" autocomplete="off">
+      <button class="btn-primary" style="margin-top:10px" onclick="saveKey()"><i class="ti ti-device-floppy"></i> 保存する</button>
+      ${hasKey ? `<button class="btn-outline btn-danger" onclick="deleteKey()"><i class="ti ti-trash"></i> APIキーを削除</button>` : ''}
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-info-circle"></i> 無料枠について</div>
+      <div class="card-row"><span class="card-label">料金</span><span class="card-value" style="color:var(--green);font-weight:700">完全無料</span></div>
+      <div class="card-row"><span class="card-label">1日の上限</span><span class="card-value">1,500枚まで</span></div>
+      <div class="card-row"><span class="card-label">有効期限</span><span class="card-value">なし（永久）</span></div>
+      <div class="card-row"><span class="card-label">登録条件</span><span class="card-value">Googleアカウントのみ</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-database"></i> データ管理</div>
+      <button class="btn-outline btn-danger" onclick="clearAll()"><i class="ti ti-trash"></i> すべての現場データを削除</button>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-info-circle"></i> アプリ情報</div>
+      <div class="card-row"><span class="card-label">AIエンジン</span><span class="card-value">Google Gemini 2.5 Flash</span></div>
+      <div class="card-row"><span class="card-label">データ保存</span><span class="card-value">端末内（ローカル）</span></div>
+      <div class="card-row"><span class="card-label">バージョン</span><span class="card-value">2.0.0</span></div>
+    </div>`;
+}
+
+function saveKey() {
+  const k = document.getElementById('api-key-input').value.trim();
+  if (!k) { toast('APIキーを入力してください','ti-alert-circle'); return; }
+  if (k.length < 20) { toast('APIキーが短すぎます。正しくコピーされているか確認してください','ti-alert-circle'); return; }
+  localStorage.setItem('gemini_api_key', k);
+  toast('APIキーを保存しました');
+  renderSettings();
+}
+function deleteKey() {
+  if (!confirm('APIキーを削除しますか？')) return;
+  localStorage.removeItem('gemini_api_key'); renderSettings();
+}
+function clearAll() {
+  if (!confirm('すべての現場データを削除しますか？この操作は元に戻せません。')) return;
+  sites=[]; save(); toast('削除しました','ti-trash'); renderSettings();
+}
+
+// ── Camera ──
+function onFileSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  selectedFile = file;
+  selectedMime = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = ev => {
+    selectedImageBase64 = ev.target.result.split(',')[1];
+    document.getElementById('img-preview').src = ev.target.result;
+    document.getElementById('img-preview-wrap').style.display = 'block';
+    document.getElementById('analyze-btn-wrap').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      currentLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    }, () => { currentLocation = null; });
+  }
+}
+function clearImage() {
+  selectedFile = selectedImageBase64 = null;
+  document.getElementById('img-preview-wrap').style.display='none';
+  document.getElementById('analyze-btn-wrap').style.display='none';
+  document.getElementById('file-input').value='';
+}
+
+// ── AI Analysis (Gemini) ──
+async function startAnalysis() {
+  const apiKey = localStorage.getItem('gemini_api_key');
+  if (!apiKey) { toast('設定でGemini APIキーを入力してください','ti-key'); setTimeout(()=>goTo('settings'),1200); return; }
+  if (!selectedImageBase64) { toast('写真を選択してください','ti-alert-circle'); return; }
+
+  document.getElementById('analyze-btn-wrap').style.display='none';
+  document.getElementById('analyzing-wrap').style.display='block';
+
+  const steps = ['施工体系図を読み取り中...','文字認識（OCR）処理中...','業者情報を構造化中...','データを整理中...'];
+  let si = 0;
+  const stepEl = document.getElementById('analyzing-step-text');
+  const prog = document.getElementById('prog');
+  const iv = setInterval(() => {
+    if (si < steps.length) { stepEl.textContent=steps[si]; prog.style.width=((si+1)/steps.length*80)+'%'; si++; }
+  }, 1200);
+
+  try {
+    const prompt = `この画像は建設現場の施工体系図です。画像から情報を正確に読み取り、必ずJSON形式のみで返してください（説明文・コードブロック・マークダウン不要）。
+
+{
+  "name": "現場名",
+  "client": "元請会社名（正式名称）",
+  "period": "工期（例: 2024/4/1〜2025/3/31）",
+  "address": "現場住所（記載があれば）",
+  "primary": [
+    {
+      "trade": "工種名",
+      "company": "業者名（略称）",
+      "formal": "業者名（正式名称。株式会社・有限会社等を補完）",
+      "person": "担当者名または社長名",
+      "address": "住所（記載があれば）"
+    }
+  ],
+  "secondary": [
+    {
+      "trade": "工種名",
+      "company": "業者名（略称）",
+      "formal": "業者名（正式名称）",
+      "person": "担当者名または社長名",
+      "address": "住所（記載があれば）"
+    }
+  ]
+}
+
+注意:
+- primaryは1次業者、secondaryは2次業者
+- 画像が多少荒くても文脈から推測して補完すること
+- 読み取れない箇所は空文字
+- JSONのみ返すこと。それ以外は一切出力しない`;
+
+    const isNewKey = apiKey.startsWith('AQ.');
+    const apiUrl = isNewKey
+      ? 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent'
+      : `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+    const reqHeaders = {'Content-Type': 'application/json'};
+    if (isNewKey) reqHeaders['x-goog-api-key'] = apiKey;
+
+    const res = await fetch(apiUrl,
+      {
+        method: 'POST',
+        headers: reqHeaders,
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { inline_data: { mime_type: selectedMime, data: selectedImageBase64 } },
+              { text: prompt }
+            ]
+          }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
+        })
+      }
+    );
+
+    clearInterval(iv);
+    prog.style.width = '100%';
+
+    if (!res.ok) {
+      const err = await res.json().catch(()=>({}));
+      const msg = err.error?.message || `APIエラー (${res.status})`;
+      // key invalid check
+      if (res.status===400 || res.status===403) throw new Error('APIキーが正しくないか無効です: ' + msg);
+      throw new Error(msg);
+    }
+
+    const data = await res.json();
+    let text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    text = text.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+
+    let parsed;
+    try { parsed = JSON.parse(text); }
+    catch(e) {
+      // Try to extract JSON from text
+      const m = text.match(/\{[\s\S]*\}/);
+      if (m) parsed = JSON.parse(m[0]);
+      else throw new Error('AIの返答をJSONとして解析できませんでした');
+    }
+
+    const today = new Date();
+    const newSite = {
+      id: Date.now().toString(),
+      date: `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`,
+      lat: currentLocation?.lat || null,
+      lng: currentLocation?.lng || null,
+      ...parsed,
+    };
+    sites.push(newSite);
+    save();
+
+    document.getElementById('analyzing-wrap').style.display='none';
+    clearImage();
+    toast('解析完了！現場を登録しました');
+    setTimeout(()=>goTo('list'), 800);
+
+  } catch(e) {
+    clearInterval(iv);
+    document.getElementById('analyzing-wrap').style.display='none';
+    document.getElementById('analyze-btn-wrap').style.display='block';
+    toast('エラー: '+e.message, 'ti-alert-circle');
+    console.error(e);
+  }
+}
+
+// ── Init ──
+renderList();
+</script>
+</body>
+</html>
