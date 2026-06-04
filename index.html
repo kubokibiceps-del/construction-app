@@ -148,12 +148,19 @@ body{font-family:-apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif;backgro
         <button class="btn-outline" style="font-size:13px;padding:12px 8px;margin-top:0;border-color:var(--blue);color:var(--blue)" id="btn-gallery"><i class="ti ti-photo"></i><br>過去の写真を選ぶ</button>
       </div>
       <button class="btn-outline" style="margin-top:0;border-color:var(--red);color:var(--red);font-size:13px;padding:11px" id="btn-pdf"><i class="ti ti-file-type-pdf"></i> PDFファイルを選ぶ</button>
+      <button class="btn-outline" style="margin-top:0;border-color:#6B21A8;color:#6B21A8;font-size:13px;padding:11px" id="btn-multi"><i class="ti ti-layout-grid"></i> 複数スクリーンショットを結合して解析</button>
       <input type="file" id="file-camera" accept="image/*" capture="environment" style="display:none">
       <input type="file" id="file-gallery" accept="image/*" style="display:none">
       <input type="file" id="file-pdf" accept="application/pdf" style="display:none">
+      <input type="file" id="file-multi" accept="image/*" multiple style="display:none">
       <div style="font-size:11px;color:var(--text-sub);text-align:center;margin-top:8px">JPG・PNG・HEIC・PDF対応</div>
     </div>
     <div id="img-preview-wrap"><img id="img-preview" src="" alt=""></div>
+    <div id="multi-preview-wrap" style="display:none" class="card">
+      <div class="card-title"><i class="ti ti-layout-grid"></i> <span id="multi-count">0</span>枚の画像を結合します</div>
+      <div id="multi-thumbnails" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"></div>
+      <div style="font-size:12px;color:var(--text-sub)">上から順に繫ぎ合わせ、一枚の画像としてAIに送信します。</div>
+    </div>
     <div id="pdf-preview-wrap" class="card">
       <div style="display:flex;align-items:center;gap:12px;padding:4px 0">
         <div style="width:44px;height:44px;background:var(--red-light);border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-file-type-pdf" style="font-size:24px;color:var(--red)"></i></div>
@@ -187,6 +194,13 @@ body{font-family:-apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif;backgro
         <div class="progress-bar" style="margin-top:12px"><div class="progress-fill" id="url-prog"></div></div>
       </div>
     </div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-file-import"></i> 方法③ JSON直接インポート</div>
+      <div class="banner banner-info" style="margin-bottom:10px"><i class="ti ti-info-circle"></i><div><b>大規模PDFに対応</b><span>ClaudeにPDFを読み込んで取得したJSONを貼り付けて登録できます。</span></div></div>
+      <textarea id="json-import-input" placeholder='{"name":"現場名","client":"元請名",...}' style="width:100%;height:120px;border:0.5px solid var(--gray-border-md);border-radius:var(--r-sm);padding:10px;font-size:12px;font-family:monospace;resize:vertical;outline:none"></textarea>
+      <button class="btn-primary" id="btn-json-import" style="margin-top:8px"><i class="ti ti-file-import"></i> インポートして登録</button>
+    </div>
+
     <div class="card">
       <div class="card-title"><i class="ti ti-photo"></i> 撮影のコツ</div>
       <div class="banner banner-info" style="margin-bottom:10px"><i class="ti ti-info-circle"></i><div><b>多少荒くても読み取れます</b><span>AIは低解像度・多少ぼやけた画像でも文脈から補完します。</span></div></div>
@@ -578,48 +592,58 @@ function onPdfSelected(input){
   var file = input.files[0];
   if(!file) return;
   selectedFile = file;
-  selectedMime = 'application/pdf';
-  selectedB64 = null;
   pdfText = null;
   document.getElementById('pdf-name').textContent = file.name;
-  document.getElementById('pdf-size').textContent = Math.round(file.size/1024) + ' KB - \u30c6\u30ad\u30b9\u30c8\u62bd\u51fa\u4e2d...';
+  document.getElementById('pdf-size').textContent = Math.round(file.size/1024) + ' KB - 画像変換中...';
   document.getElementById('pdf-preview-wrap').style.display = 'block';
   document.getElementById('img-preview-wrap').style.display = 'none';
-  document.getElementById('analyze-wrap').style.display = 'block';
+  document.getElementById('analyze-wrap').style.display = 'none';
   getLocation();
 
-  // Extract text with PDF.js
-  if(typeof pdfjsLib === 'undefined'){ document.getElementById('pdf-size').textContent = Math.round(file.size/1024) + ' KB'; return; }
+  if(typeof pdfjsLib === 'undefined'){
+    document.getElementById('pdf-size').textContent = Math.round(file.size/1024) + ' KB';
+    document.getElementById('analyze-wrap').style.display = 'block';
+    return;
+  }
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+
   var reader = new FileReader();
   reader.onload = function(e){
-    var data = e.target.result;
-    pdfjsLib.getDocument({data: data}).promise.then(function(pdf){
-      var pages = Math.min(pdf.numPages, 10);
-      var texts = [];
-      var p = Promise.resolve();
-      for(var i=1;i<=pages;i++){
-        (function(pageNum){
-          p = p.then(function(){
-            return pdf.getPage(pageNum).then(function(page){
-              return page.getTextContent().then(function(tc){
-                texts.push(tc.items.map(function(it){ return it.str; }).join(' '));
-              });
-            });
-          });
-        })(i);
-      }
-      p.then(function(){
-        pdfText = texts.join('\n').trim();
-        document.getElementById('pdf-size').textContent = Math.round(file.size/1024) + ' KB - ' + pdf.numPages + '\u30da\u30fc\u30b8\uff08\u62bd\u51fa\u5b8c\u4e86\uff09';
+    pdfjsLib.getDocument({data: e.target.result}).promise.then(function(pdf){
+      pdf.getPage(1).then(function(page){
+        // Render at high scale - cap canvas size to avoid memory issues
+        var baseViewport = page.getViewport({scale: 1.0});
+        // Scale to max 3000px wide for good OCR quality
+        var scale = Math.min(3.0, 3000 / baseViewport.width);
+        var viewport = page.getViewport({scale: scale});
+
+        // If page is very tall (施工体系図 is often wide/tall), crop to top portion
+        var canvasHeight = Math.min(viewport.height, 4000);
+        var canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = canvasHeight;
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        page.render({canvasContext: ctx, viewport: viewport}).promise.then(function(){
+          var dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+          selectedB64 = dataUrl.split(',')[1];
+          selectedMime = 'image/jpeg';
+          document.getElementById('img-preview').src = dataUrl;
+          document.getElementById('img-preview-wrap').style.display = 'block';
+          document.getElementById('pdf-preview-wrap').style.display = 'none';
+          document.getElementById('analyze-wrap').style.display = 'block';
+          document.getElementById('pdf-size').textContent = Math.round(file.size/1024) + ' KB - 画像変換完了（' + pdf.numPages + 'ページ / ' + Math.round(canvas.width) + 'x' + Math.round(canvasHeight) + 'px）';
+        });
       });
-    }).catch(function(){
-      document.getElementById('pdf-size').textContent = Math.round(file.size/1024) + ' KB';
+    }).catch(function(err){
+      document.getElementById('pdf-size').textContent = '変換エラー';
+      document.getElementById('analyze-wrap').style.display = 'block';
     });
   };
   reader.readAsArrayBuffer(file);
 }
-
 function clearFile(){
   selectedFile = null; selectedB64 = null; pdfText = null;
   selectedMime = 'image/jpeg';
@@ -746,13 +770,7 @@ function startAnalysis(){
 
   // Build request body
   var body;
-  if(selectedMime === 'application/pdf' && pdfText){
-    // Preprocess PDF text to compress company info
-    var compressedText = compressPdfText(pdfText);
-    body = {
-      contents:[{parts:[{text: PROMPT + '\n\n' + compressedText}]}],
-      generationConfig:{temperature:0.1, maxOutputTokens:4096}
-    };
+  if(false){ // PDF now converted to image, handled by image branch
   } else if(selectedB64){
     body = {
       contents:[{parts:[{inline_data:{mime_type: selectedMime, data: selectedB64}},{text: PROMPT}]}],
@@ -859,6 +877,108 @@ function startUrlAnalysis(){
       console.error(err);
     });
 }
+
+// ---- JSON IMPORT ----
+document.getElementById('btn-multi').addEventListener('click', function(){ document.getElementById('file-multi').click(); });
+
+document.getElementById('file-multi').addEventListener('change', function(e){
+  var files = Array.from(e.target.files);
+  if(!files.length) return;
+  document.getElementById('multi-count').textContent = files.length;
+  document.getElementById('multi-preview-wrap').style.display = 'block';
+  document.getElementById('img-preview-wrap').style.display = 'none';
+  document.getElementById('pdf-preview-wrap').style.display = 'none';
+  document.getElementById('analyze-wrap').style.display = 'none';
+
+  var thumbs = document.getElementById('multi-thumbnails');
+  thumbs.innerHTML = '';
+
+  // Load all images and stitch them vertically
+  var loaded = [];
+  var pending = files.length;
+
+  files.forEach(function(file, idx){
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      var img = new Image();
+      img.onload = function(){
+        loaded[idx] = img;
+        // Thumbnail
+        var thumb = document.createElement('img');
+        thumb.src = ev.target.result;
+        thumb.style.cssText = 'width:60px;height:60px;object-fit:cover;border-radius:4px;border:0.5px solid var(--gray-border)';
+        thumbs.appendChild(thumb);
+        pending--;
+        if(pending === 0) stitchImages(loaded, files.length);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  getLocation();
+});
+
+function stitchImages(images, count) {
+  // Find max width
+  var maxW = 0;
+  var totalH = 0;
+  for(var i=0;i<count;i++){
+    if(images[i].naturalWidth > maxW) maxW = images[i].naturalWidth;
+    totalH += images[i].naturalHeight;
+  }
+  // Cap at reasonable size
+  var scale = Math.min(1, 4000 / maxW);
+  var canvasW = Math.round(maxW * scale);
+  var canvasH = Math.round(totalH * scale);
+  // Cap total height
+  if(canvasH > 16000) { scale = scale * 16000 / canvasH; canvasW = Math.round(maxW*scale); canvasH = 16000; }
+
+  var canvas = document.createElement('canvas');
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+  var ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'white';
+  ctx.fillRect(0,0,canvasW,canvasH);
+
+  var y = 0;
+  for(var j=0;j<count;j++){
+    var h = Math.round(images[j].naturalHeight * scale);
+    ctx.drawImage(images[j], 0, y, canvasW, h);
+    y += h;
+  }
+
+  var dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+  selectedB64 = dataUrl.split(',')[1];
+  selectedMime = 'image/jpeg';
+  document.getElementById('img-preview').src = dataUrl;
+  document.getElementById('img-preview-wrap').style.display = 'block';
+  document.getElementById('analyze-wrap').style.display = 'block';
+  document.getElementById('multi-count').textContent = count + '枚結合完了 (' + canvasW + 'x' + canvasH + 'px)';
+}
+
+document.getElementById('btn-json-import').addEventListener('click', function(){
+  var raw = document.getElementById('json-import-input').value.trim();
+  if(!raw){ toast('テキストを貼り付けてください', true); return; }
+  try {
+    var parsed = JSON.parse(raw);
+    // Support both single object and array
+    var items = Array.isArray(parsed) ? parsed : [parsed];
+    var count = 0;
+    items.forEach(function(item){
+      if(!item.name && !item.client && !item.primary) return;
+      var ns = {id: Date.now().toString() + Math.random().toString(36).slice(2), date: today(), lat: null, lng: null};
+      Object.assign(ns, item);
+      sites.push(ns);
+      count++;
+    });
+    save();
+    document.getElementById('json-import-input').value = '';
+    toast(count + '件の現場を登録しました');
+    setTimeout(function(){ goTo('list'); }, 800);
+  } catch(e) {
+    toast('JSONの形式が正しくありません: ' + e.message, true);
+  }
+});
 
 // ---- INIT ----
 renderList();
